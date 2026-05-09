@@ -19,8 +19,10 @@ log.transports.file.level = 'info'
 log.transports.console.level = app.isPackaged ? 'warn' : 'debug'
 
 const isDev = !app.isPackaged
-const SUPABASE_URL = 'https://rhhmdjipigvtfrzwzchh.supabase.co'
-const SUPABASE_WS = 'wss://rhhmdjipigvtfrzwzchh.supabase.co'
+// CSP permite qualquer projeto Supabase — credenciais reais ficam no
+// keychain do OS via ConfigGate (renderer). Não fica nada no código.
+const SUPABASE_HTTPS_WILDCARD = 'https://*.supabase.co'
+const SUPABASE_WSS_WILDCARD = 'wss://*.supabase.co'
 
 let mainWindow: BrowserWindow | null = null
 let pendingDeepLink: string | null = null
@@ -28,8 +30,8 @@ let pendingDeepLink: string | null = null
 function buildCsp(): string {
   const connectSrc = [
     "'self'",
-    SUPABASE_URL,
-    SUPABASE_WS,
+    SUPABASE_HTTPS_WILDCARD,
+    SUPABASE_WSS_WILDCARD,
     isDev ? 'ws://localhost:5173' : '',
     isDev ? 'http://localhost:5173' : '',
   ]

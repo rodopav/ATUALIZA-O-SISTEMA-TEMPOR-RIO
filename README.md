@@ -1,6 +1,6 @@
 # Sistema Financeiro Rodopav (Desktop)
 
-Aplicativo Electron que substitui a planilha de tesouraria. Conecta a um Supabase já provisionado em São Paulo (`rhhmdjipigvtfrzwzchh`).
+Aplicativo Electron que substitui a planilha de tesouraria. Conecta a um Supabase configurado pelo usuário no primeiro launch (ConfigGate).
 
 ## Stack
 

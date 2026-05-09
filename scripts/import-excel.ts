@@ -50,7 +50,7 @@ function err(msg: string): void {
 // --------- Env ---------
 
 const envSchema = z.object({
-  SUPABASE_URL: z.string().url().default('https://rhhmdjipigvtfrzwzchh.supabase.co'),
+  SUPABASE_URL: z.string().url('SUPABASE_URL ausente ou inválida (defina no .env.local).'),
   SUPABASE_SERVICE_ROLE_KEY: z
     .string()
     .min(20, 'SUPABASE_SERVICE_ROLE_KEY ausente ou inválida.'),
@@ -127,7 +127,7 @@ Opções:
   -h, --help     Mostra esta ajuda.
 
 Variáveis de ambiente (.env.local):
-  SUPABASE_URL                 URL do projeto Supabase (default: https://rhhmdjipigvtfrzwzchh.supabase.co)
+  SUPABASE_URL                 URL do projeto Supabase (obrigatório)
   SUPABASE_SERVICE_ROLE_KEY    Service role key (obrigatório).
 
 Saída:

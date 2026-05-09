@@ -1,6 +1,6 @@
 {
   "name": "sistema-financeiro-rodopav",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "description": "Sistema Financeiro Desktop — Rodopav Central",
   "private": true,
   "type": "module",
@@ -35,7 +35,7 @@
     "build:user:linux": "pnpm make:icon && pnpm build:user && electron-builder --config electron-builder.user.yml --linux",
     "build:admin:linux": "pnpm make:icon && pnpm build:admin && electron-builder --config electron-builder.admin.yml --linux",
     "build:magnata:linux": "pnpm make:icon && pnpm build:magnata && electron-builder --config electron-builder.magnata.yml --linux",
-    "gen:types": "supabase gen types typescript --project-id rhhmdjipigvtfrzwzchh > src/shared/database.types.ts",
+    "gen:types": "supabase gen types typescript --project-id $SUPABASE_PROJECT_ID > src/shared/database.types.ts",
     "import:excel": "tsx scripts/import-excel.ts",
     "preview": "electron-vite preview"
   },
