@@ -8,7 +8,9 @@
 
 export type UpdateEventPayload =
   | { type: 'available'; version?: string }
+  | { type: 'progress'; percent: number; bytesPerSecond: number }
   | { type: 'ready'; version?: string }
+  | { type: 'error'; message: string }
 
 export type DeepLinkPayload =
   | { type: 'reset'; token: string }

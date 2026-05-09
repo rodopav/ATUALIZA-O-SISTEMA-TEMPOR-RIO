@@ -22,15 +22,22 @@ import {
 import { Button } from '../components/ui/button'
 import { Spinner } from '../components/ui/spinner'
 import { toast } from '../components/ui/use-toast'
+import { cn } from '../lib/cn'
 
 type Status =
   | { kind: 'idle' }
   | { kind: 'checking' }
   | { kind: 'up_to_date' }
   | { kind: 'available'; version: string }
-  | { kind: 'downloading'; version: string }
+  | { kind: 'downloading'; version: string; percent: number; bps: number }
   | { kind: 'ready'; version: string }
   | { kind: 'error'; message: string }
+
+function formatBytes(bps: number): string {
+  if (bps < 1024) return `${bps} B/s`
+  if (bps < 1024 * 1024) return `${(bps / 1024).toFixed(1)} KB/s`
+  return `${(bps / 1024 / 1024).toFixed(2)} MB/s`
+}
 
 export function AtualizacoesPage(): React.ReactElement {
   const [status, setStatus] = React.useState<Status>({ kind: 'idle' })
@@ -52,17 +59,31 @@ export function AtualizacoesPage(): React.ReactElement {
   React.useEffect(() => {
     const off = window.api.onUpdateEvent((event) => {
       if (event.type === 'available') {
-        setStatus({ kind: 'downloading', version: event.version ?? '?' })
-        toast({
-          title: 'Atualização disponível',
-          description: `Baixando v${event.version ?? '?'}…`,
+        setStatus({
+          kind: 'downloading',
+          version: event.version ?? '?',
+          percent: 0,
+          bps: 0,
         })
+      } else if (event.type === 'progress') {
+        setStatus((cur) =>
+          cur.kind === 'downloading'
+            ? { ...cur, percent: event.percent, bps: event.bytesPerSecond }
+            : cur,
+        )
       } else if (event.type === 'ready') {
         setStatus({ kind: 'ready', version: event.version ?? '?' })
         toast({
           title: 'Atualização pronta',
           description: `v${event.version ?? '?'} pronta para instalar.`,
           variant: 'success',
+        })
+      } else if (event.type === 'error') {
+        setStatus({ kind: 'error', message: event.message })
+        toast({
+          title: 'Falha na atualização',
+          description: event.message,
+          variant: 'destructive',
         })
       }
     })
@@ -74,7 +95,11 @@ export function AtualizacoesPage(): React.ReactElement {
     try {
       const result = await window.api.checkForUpdates()
       if (result.available) {
-        setStatus({ kind: 'available', version: result.version ?? '?' })
+        setStatus((cur) =>
+          cur.kind === 'downloading' || cur.kind === 'ready'
+            ? cur // já avançou via push event
+            : { kind: 'available', version: result.version ?? '?' },
+        )
       } else {
         setStatus({ kind: 'up_to_date' })
       }
@@ -203,16 +228,37 @@ function StatusPanel({
       )
     case 'available':
       return (
-        <div className="flex items-center gap-2 rounded-md border border-amb-400/40 bg-amb-100/40 px-3 py-2 text-sm dark:bg-amb-400/10">
+        <div className="flex items-center gap-2 rounded-md border border-amb-400/40 bg-card px-3 py-2 text-sm">
           <Download className="h-4 w-4 text-amb-600 dark:text-amb-300" />
-          Versão <strong>v{status.version}</strong> disponível. Baixando…
+          <span>
+            Versão{' '}
+            <strong className="text-amb-600 dark:text-amb-300">
+              v{status.version}
+            </strong>{' '}
+            disponível. Iniciando download…
+          </span>
         </div>
       )
     case 'downloading':
       return (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Spinner />
-          Baixando v{status.version}…
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-medium">
+              Baixando v{status.version}…{' '}
+              <span className="tabular-nums text-muted-foreground">
+                {formatBytes(status.bps)}
+              </span>
+            </span>
+            <span className="font-semibold tabular-nums text-amb-600 dark:text-amb-300">
+              {status.percent}%
+            </span>
+          </div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className={cn('h-full bg-amb-400 transition-all duration-300')}
+              style={{ width: `${Math.max(2, status.percent)}%` }}
+            />
+          </div>
         </div>
       )
     case 'ready':
@@ -232,8 +278,16 @@ function StatusPanel({
       return (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Erro ao verificar atualização</AlertTitle>
-          <AlertDescription>{status.message}</AlertDescription>
+          <AlertTitle>Falha ao atualizar</AlertTitle>
+          <AlertDescription>
+            <p className="break-words font-mono text-[11px] leading-snug">
+              {status.message}
+            </p>
+            <p className="mt-2 text-xs">
+              Se o erro for de assinatura digital, este é um problema do
+              servidor de releases — entre em contato com o TI.
+            </p>
+          </AlertDescription>
         </Alert>
       )
   }

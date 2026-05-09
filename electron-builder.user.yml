@@ -21,6 +21,7 @@ publish:
     owner: rodopav
     repo: ATUALIZA-O-SISTEMA-TEMPOR-RIO
     releaseType: release
+    channel: latest
 win:
   target:
     - target: nsis
@@ -28,7 +29,10 @@ win:
     - target: portable
       arch: [x64]
   icon: build/icon.png
-  publisherName: Rodopav Central
+  # publisherName removido — sem code signing, electron-updater rejeita
+  # a atualização ao tentar verificar a assinatura. Para reativar, é
+  # preciso assinar com certificado de code signing ($300+/ano).
+  verifyUpdateCodeSignature: false
   artifactName: ${productName}-Setup-${version}.${ext}
 nsis:
   oneClick: false

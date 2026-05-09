@@ -21,6 +21,7 @@ publish:
     owner: rodopav
     repo: ATUALIZA-O-SISTEMA-TEMPOR-RIO
     releaseType: release
+    channel: admin
 win:
   target:
     - target: nsis
@@ -28,7 +29,8 @@ win:
     - target: portable
       arch: [x64]
   icon: build/icon-admin.png
-  publisherName: Rodopav Central
+  # publisherName removido para o auto-updater funcionar sem code signing.
+  verifyUpdateCodeSignature: false
   artifactName: ${productName}-Setup-${version}.${ext}
 nsis:
   oneClick: false

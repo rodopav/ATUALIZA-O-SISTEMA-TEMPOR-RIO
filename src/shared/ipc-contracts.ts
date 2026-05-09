@@ -95,7 +95,9 @@ export const PUSH_CHANNELS = {
 
 export type UpdatePushPayload =
   | { type: 'available'; version?: string }
+  | { type: 'progress'; percent: number; bytesPerSecond: number }
   | { type: 'ready'; version?: string }
+  | { type: 'error'; message: string }
 
 export type DeepLinkPayload = {
   type: string

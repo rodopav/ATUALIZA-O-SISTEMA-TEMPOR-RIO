@@ -16,6 +16,18 @@ function pushUpdate(win: BrowserWindow, payload: UpdatePushPayload): void {
   win.webContents.send(PUSH_CHANNELS.updateEvent, payload)
 }
 
+/**
+ * Detecta o canal pelo productName/appId — cada um dos 3 apps publica num
+ * feed diferente (latest.yml / admin.yml / magnata.yml) na mesma release
+ * do GitHub. Sem isso, o app errado baixa o instalador errado.
+ */
+function detectChannel(): string {
+  const name = app.getName().toLowerCase()
+  if (name.includes('admin')) return 'admin'
+  if (name.includes('magnata')) return 'magnata'
+  return 'latest'
+}
+
 export function setupAutoUpdater(win: BrowserWindow): void {
   if (configured) return
   configured = true
@@ -24,6 +36,9 @@ export function setupAutoUpdater(win: BrowserWindow): void {
   autoUpdater.logger = log as unknown as typeof autoUpdater.logger
   autoUpdater.autoDownload = true
   autoUpdater.autoInstallOnAppQuit = true
+  autoUpdater.channel = detectChannel()
+
+  log.info(`[updater] Canal: ${autoUpdater.channel}`)
 
   autoUpdater.on('checking-for-update', () => {
     log.info('[updater] Verificando atualizações...')
@@ -38,6 +53,14 @@ export function setupAutoUpdater(win: BrowserWindow): void {
     log.info('[updater] Nenhuma atualização disponível.')
   })
 
+  autoUpdater.on('download-progress', (progress) => {
+    pushUpdate(win, {
+      type: 'progress',
+      percent: Math.round(progress.percent ?? 0),
+      bytesPerSecond: Math.round(progress.bytesPerSecond ?? 0),
+    })
+  })
+
   autoUpdater.on('update-downloaded', (info) => {
     log.info('[updater] Atualização baixada:', info?.version)
     pushUpdate(win, { type: 'ready', version: info?.version })
@@ -45,11 +68,17 @@ export function setupAutoUpdater(win: BrowserWindow): void {
 
   autoUpdater.on('error', (err) => {
     log.error('[updater] Erro no auto-updater:', err)
+    const message = err instanceof Error ? err.message : String(err)
+    pushUpdate(win, { type: 'error', message })
   })
 
   if (app.isPackaged) {
     autoUpdater.checkForUpdatesAndNotify().catch((err) => {
       log.error('[updater] Falha ao checar atualizações:', err)
+      pushUpdate(win, {
+        type: 'error',
+        message: err instanceof Error ? err.message : String(err),
+      })
     })
   }
 }
