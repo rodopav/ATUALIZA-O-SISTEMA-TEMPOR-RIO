@@ -1,0 +1,60 @@
+appId: br.com.rodopav.iam
+productName: Rodopav Admin
+copyright: © 2026 Rodopav Central
+directories:
+  output: release/admin
+  buildResources: build
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!electron.vite.config.{js,mjs,ts}'
+  - '!{.eslintrc.cjs,.prettierrc,.gitignore,.editorconfig}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  - '!{.env,.env.*,README.md,electron-builder*.yml}'
+  - '!scripts/**'
+  - '!release/**'
+asar: true
+asarUnpack:
+  - '**/*.node'
+publish:
+  - provider: github
+    owner: rodopav
+    repo: ATUALIZA-O-SISTEMA-TEMPOR-RIO
+    releaseType: release
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+  icon: build/icon-admin.png
+  publisherName: Rodopav Central
+  artifactName: ${productName}-Setup-${version}.${ext}
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: Rodopav Admin
+  uninstallDisplayName: Rodopav Admin (IAM)
+mac:
+  target:
+    - target: dmg
+      arch: [universal]
+  category: public.app-category.utilities
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  notarize: false
+linux:
+  target:
+    - target: AppImage
+      arch: [x64]
+    - target: deb
+      arch: [x64]
+  category: System;Settings
+  artifactName: ${productName}-${version}.${ext}
+electronDownload:
+  mirror: https://npmmirror.com/mirrors/electron/

@@ -1,0 +1,29 @@
+node_modules/
+out/
+release/
+dist/
+.env
+.env.local
+.env.*.local
+# .env.user / .env.admin / .env.magnata só contêm VITE_APP_MODE — pode commitar
+*.log
+logs/
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+build/icons/*.png
+playwright-report/
+test-results/
+.turbo/
+.cache/
+
+# TS build artifacts
+*.tsbuildinfo
+
+# Local Supabase config
+.supabase/
+.env.local.example
+

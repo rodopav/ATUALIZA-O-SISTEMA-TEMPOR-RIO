@@ -1,0 +1,11 @@
+CONTRATO DE LICENÇA DE USO — SISTEMA FINANCEIRO RODOPAV
+
+Versão 1.0 — © 2026 Rodopav Central. Todos os direitos reservados.
+
+Este software é de uso exclusivo da Rodopav Central e suas empresas
+relacionadas (Rodopav, Rios Empreendimentos, Road Asfaltos, Road Concretos,
+Rodoagro, RTC, RH, Transportes). É proibida a redistribuição, decompilação,
+engenharia reversa ou qualquer uso fora do escopo das operações financeiras
+internas.
+
+Ao instalar, o usuário concorda com estes termos.

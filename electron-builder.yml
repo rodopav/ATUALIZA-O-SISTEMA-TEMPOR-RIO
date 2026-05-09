@@ -1,0 +1,69 @@
+appId: br.com.rodopav.financeiro
+productName: Sistema Financeiro Rodopav
+copyright: © 2026 Rodopav Central
+directories:
+  output: release
+  buildResources: build
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!electron.vite.config.{js,mjs,ts}'
+  - '!{.eslintrc.cjs,.prettierrc,.gitignore,.editorconfig}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  - '!{.env,.env.*,README.md,electron-builder.yml}'
+  - '!scripts/**'
+asar: true
+asarUnpack:
+  - '**/*.node'
+# publish desabilitado até o repositório do GitHub existir.
+# Restaure o bloco abaixo quando o repo for criado.
+# publish:
+#   - provider: github
+#     owner: rodopav
+#     repo: financeiro-desktop
+#     releaseType: release
+publish: null
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+  # icon: build/icon.ico  # adicionar quando o ícone Windows existir
+  publisherName: Rodopav Central
+  artifactName: ${productName}-Setup-${version}.${ext}
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: Sistema Financeiro
+  # installerIcon: build/installer.ico
+  # uninstallerIcon: build/uninstaller.ico
+  uninstallDisplayName: Sistema Financeiro Rodopav
+mac:
+  target:
+    - target: dmg
+      arch: [universal]
+  category: public.app-category.finance
+  # icon: build/icon.icns  # adicionar quando o ícone macOS existir
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  notarize: false
+linux:
+  target:
+    - target: AppImage
+      arch: [x64]
+    - target: deb
+      arch: [x64]
+  category: Office;Finance
+  # icon: build/icons  # adicionar quando os PNGs Linux existirem
+  artifactName: ${productName}-${version}.${ext}
+protocols:
+  - name: rodofin
+    schemes: [rodofin]
+electronDownload:
+  mirror: https://npmmirror.com/mirrors/electron/
