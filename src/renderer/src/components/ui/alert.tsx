@@ -2,20 +2,32 @@ import * as React from 'react'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '../../lib/cn'
 
+/**
+ * Padrão visual para evitar cor-sobre-cor:
+ *   - background: neutro (bg-card) sempre
+ *   - borda: tintada (semantica)
+ *   - ícone: tintado (cor da variante)
+ *   - título h5: tintado (cor da variante) — em negrito para destacar
+ *   - description: text-foreground (não muted, pra garantir contraste)
+ *
+ * Resultado: independente do tema (light/dark), o texto fica sempre legível
+ * — o pé do alerta usa as cores neutras do tema, só o "indicador" (borda/ícone/título)
+ * carrega a cor da variante.
+ */
 const alertVariants = cva(
-  'relative w-full rounded-lg border p-4 text-foreground [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg~*]:pl-7',
+  'relative w-full rounded-lg border bg-card p-4 text-foreground [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg~*]:pl-7',
   {
     variants: {
       variant: {
-        default: 'border-border bg-background [&>svg]:text-muted-foreground',
+        default: 'border-border [&>svg]:text-muted-foreground',
         destructive:
-          'border-destructive/40 bg-destructive/5 [&>svg]:text-destructive [&_h5]:text-destructive dark:bg-destructive/10',
+          'border-destructive/50 [&>svg]:text-destructive [&_h5]:text-destructive',
         warning:
-          'border-amb-400/40 bg-amb-100/40 [&>svg]:text-amb-600 [&_h5]:text-amb-600 dark:bg-amb-400/10 dark:[&>svg]:text-amb-300 dark:[&_h5]:text-amb-300',
+          'border-amb-400/60 [&>svg]:text-amb-600 [&_h5]:text-amb-600 dark:[&>svg]:text-amb-300 dark:[&_h5]:text-amb-300',
         success:
-          'border-success/30 bg-success/5 [&>svg]:text-success [&_h5]:text-success dark:bg-success/10',
+          'border-success/40 [&>svg]:text-success [&_h5]:text-success',
         info:
-          'border-blu-600/30 bg-blu-50/40 [&>svg]:text-blu-600 [&_h5]:text-blu-600 dark:bg-blu-600/10',
+          'border-blu-600/40 [&>svg]:text-blu-600 [&_h5]:text-blu-600 dark:[&>svg]:text-blu-50 dark:[&_h5]:text-blu-50',
       },
     },
     defaultVariants: { variant: 'default' },
@@ -53,7 +65,9 @@ export const AlertDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn('text-sm text-muted-foreground [&_p]:leading-relaxed', className)}
+    // text-foreground/85 garante que mesmo no dark fica legível, sem usar
+    // cor da variante (que causa color-on-color).
+    className={cn('text-sm text-foreground/85 [&_p]:leading-relaxed', className)}
     {...props}
   />
 ))

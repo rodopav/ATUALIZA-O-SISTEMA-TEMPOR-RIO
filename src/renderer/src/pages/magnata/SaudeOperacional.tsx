@@ -428,21 +428,32 @@ function SaudeEmpresasList({
       const dt = new Date(periodoIso + 'T00:00:00')
       const fim = new Date(dt.getFullYear(), dt.getMonth() + 1, 0)
       const fimStr = `${fim.getFullYear()}-${String(fim.getMonth() + 1).padStart(2, '0')}-${String(fim.getDate()).padStart(2, '0')}`
-      // Lancamentos joina com tipos_operacao para chegar na empresa.
+      // Lançamento → conta_origem/destino → empresa_id (FK em contas_bancarias).
       const { data, error } = await supabase
         .from('lancamentos')
-        .select('valor, natureza, tipo_operacao_id, tipos_operacao(empresa_id)')
+        .select(
+          `valor, natureza,
+           origem:contas_bancarias!lancamentos_conta_origem_id_fkey(empresa_id),
+           destino:contas_bancarias!lancamentos_conta_destino_id_fkey(empresa_id)`,
+        )
         .gte('data', periodoIso)
         .lte('data', fimStr)
       if (error) throw error
       const rows = (data ?? []) as unknown as Array<{
         valor: number
         natureza: 'ENTRADA' | 'SAIDA' | 'TRANSFERENCIA'
-        tipos_operacao: { empresa_id: string | null } | null
+        origem: { empresa_id: string | null } | null
+        destino: { empresa_id: string | null } | null
       }>
       const map = new Map<string, { entradas: number; saidas: number }>()
       for (const r of rows) {
-        const empresaId = r.tipos_operacao?.empresa_id
+        // Para SAIDA usa origem; para ENTRADA usa destino; para TRANSFERENCIA pula.
+        const empresaId =
+          r.natureza === 'SAIDA'
+            ? r.origem?.empresa_id
+            : r.natureza === 'ENTRADA'
+              ? r.destino?.empresa_id ?? r.origem?.empresa_id
+              : null
         if (!empresaId) continue
         const cur = map.get(empresaId) ?? { entradas: 0, saidas: 0 }
         const v = Number(r.valor ?? 0)

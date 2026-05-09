@@ -102,9 +102,8 @@ function buildLancamentosQuery(filters: FilterState) {
         .select(
           `id, data, descricao, valor, natureza, motivo_estorno, estorno_de_id, conciliado_em, responsavel_id,
            responsavel:profiles!lancamentos_responsavel_id_profiles_fkey(nome_completo),
-           tipo:tipos_operacao(empresa:empresas(razao_social, nome_fantasia)),
-           origem:contas_bancarias!lancamentos_conta_origem_id_fkey(apelido),
-           destino:contas_bancarias!lancamentos_conta_destino_id_fkey(apelido),
+           origem:contas_bancarias!lancamentos_conta_origem_id_fkey(apelido, empresa:empresas(razao_social, nome_fantasia)),
+           destino:contas_bancarias!lancamentos_conta_destino_id_fkey(apelido, empresa:empresas(razao_social, nome_fantasia)),
            fornecedor:fornecedores_clientes(nome),
            fornecedor_cliente_texto,
            centro:centros_de_custo(codigo)`,
@@ -125,6 +124,10 @@ function buildLancamentosQuery(filters: FilterState) {
       const { data, error } = await q
       if (error) throw error
 
+      type ContaEmbed = {
+        apelido: string
+        empresa: { razao_social: string; nome_fantasia: string | null } | null
+      } | null
       type RawLanc = {
         id: string
         data: string
@@ -137,19 +140,20 @@ function buildLancamentosQuery(filters: FilterState) {
         responsavel_id: string
         fornecedor_cliente_texto: string | null
         responsavel: { nome_completo: string } | null
-        tipo: {
-          empresa: { razao_social: string; nome_fantasia: string | null } | null
-        } | null
-        origem: { apelido: string } | null
-        destino: { apelido: string } | null
+        origem: ContaEmbed
+        destino: ContaEmbed
         fornecedor: { nome: string } | null
         centro: { codigo: string } | null
       }
       const raw = (data ?? []) as unknown as RawLanc[]
 
       const rows = raw.map((r): MagnataLancamento => {
-        const empresa = r.tipo?.empresa
-          ? (r.tipo.empresa.nome_fantasia ?? r.tipo.empresa.razao_social)
+        // Empresa vem da conta (origem prioritária; fallback destino para
+        // lançamentos sem origem como ENTRADA pura).
+        const contaParaEmpresa = r.origem ?? r.destino
+        const empresa = contaParaEmpresa?.empresa
+          ? (contaParaEmpresa.empresa.nome_fantasia ??
+            contaParaEmpresa.empresa.razao_social)
           : null
         return {
           id: r.id,

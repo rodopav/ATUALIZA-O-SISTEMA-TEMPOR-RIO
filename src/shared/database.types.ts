@@ -10,12 +10,16 @@ export type Json =
   | Json[]
 
 export type Database = {
-  __InternalSupabase: { PostgrestVersion: '14.5' }
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
   public: {
     Tables: {
       audit_log: {
         Row: {
-          acao: Database['public']['Enums']['acao_audit']
+          acao: Database["public"]["Enums"]["acao_audit"]
           entidade: string
           entidade_id: string
           id: number
@@ -28,7 +32,7 @@ export type Database = {
           valores_depois: Json | null
         }
         Insert: {
-          acao: Database['public']['Enums']['acao_audit']
+          acao: Database["public"]["Enums"]["acao_audit"]
           entidade: string
           entidade_id: string
           id?: number
@@ -40,13 +44,51 @@ export type Database = {
           valores_antes?: Json | null
           valores_depois?: Json | null
         }
-        Update: Partial<Database['public']['Tables']['audit_log']['Insert']>
-        Relationships: []
+        Update: {
+          acao?: Database["public"]["Enums"]["acao_audit"]
+          entidade?: string
+          entidade_id?: string
+          id?: number
+          ip?: string | null
+          motivo?: string | null
+          ts?: string
+          user_agent?: string | null
+          usuario_id?: string
+          valores_antes?: Json | null
+          valores_depois?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_log_usuario_id_profiles_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       centros_de_custo: {
-        Row: { ativo: boolean; codigo: string; created_at: string; id: string; nome: string }
-        Insert: { ativo?: boolean; codigo: string; created_at?: string; id?: string; nome: string }
-        Update: Partial<Database['public']['Tables']['centros_de_custo']['Insert']>
+        Row: {
+          ativo: boolean
+          codigo: string
+          created_at: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          ativo?: boolean
+          codigo: string
+          created_at?: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          ativo?: boolean
+          codigo?: string
+          created_at?: string
+          id?: string
+          nome?: string
+        }
         Relationships: []
       }
       contas_bancarias: {
@@ -59,7 +101,7 @@ export type Database = {
           empresa_id: string
           id: string
           numero: string | null
-          tipo: Database['public']['Enums']['conta_tipo']
+          tipo: Database["public"]["Enums"]["conta_tipo"]
         }
         Insert: {
           agencia?: string | null
@@ -70,10 +112,28 @@ export type Database = {
           empresa_id: string
           id?: string
           numero?: string | null
-          tipo: Database['public']['Enums']['conta_tipo']
+          tipo: Database["public"]["Enums"]["conta_tipo"]
         }
-        Update: Partial<Database['public']['Tables']['contas_bancarias']['Insert']>
-        Relationships: []
+        Update: {
+          agencia?: string | null
+          apelido?: string
+          ativo?: boolean
+          banco?: string
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          numero?: string | null
+          tipo?: Database["public"]["Enums"]["conta_tipo"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contas_bancarias_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       empresas: {
         Row: {
@@ -94,7 +154,15 @@ export type Database = {
           razao_social: string
           updated_at?: string
         }
-        Update: Partial<Database['public']['Tables']['empresas']['Insert']>
+        Update: {
+          ativo?: boolean
+          cnpj?: string | null
+          created_at?: string
+          id?: string
+          nome_fantasia?: string | null
+          razao_social?: string
+          updated_at?: string
+        }
         Relationships: []
       }
       fornecedores_clientes: {
@@ -104,7 +172,7 @@ export type Database = {
           documento: string | null
           id: string
           nome: string
-          tipo: Database['public']['Enums']['pessoa_tipo']
+          tipo: Database["public"]["Enums"]["pessoa_tipo"]
         }
         Insert: {
           ativo?: boolean
@@ -112,9 +180,16 @@ export type Database = {
           documento?: string | null
           id?: string
           nome: string
-          tipo: Database['public']['Enums']['pessoa_tipo']
+          tipo: Database["public"]["Enums"]["pessoa_tipo"]
         }
-        Update: Partial<Database['public']['Tables']['fornecedores_clientes']['Insert']>
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          documento?: string | null
+          id?: string
+          nome?: string
+          tipo?: Database["public"]["Enums"]["pessoa_tipo"]
+        }
         Relationships: []
       }
       lancamentos: {
@@ -133,7 +208,7 @@ export type Database = {
           fornecedor_cliente_texto: string | null
           id: string
           motivo_estorno: string | null
-          natureza: Database['public']['Enums']['natureza_lancamento']
+          natureza: Database["public"]["Enums"]["natureza_lancamento"]
           observacoes: string | null
           responsavel_id: string
           ri: string | null
@@ -156,7 +231,7 @@ export type Database = {
           fornecedor_cliente_texto?: string | null
           id?: string
           motivo_estorno?: string | null
-          natureza: Database['public']['Enums']['natureza_lancamento']
+          natureza: Database["public"]["Enums"]["natureza_lancamento"]
           observacoes?: string | null
           responsavel_id: string
           ri?: string | null
@@ -164,8 +239,87 @@ export type Database = {
           updated_at?: string
           valor: number
         }
-        Update: Partial<Database['public']['Tables']['lancamentos']['Insert']>
-        Relationships: []
+        Update: {
+          centro_custo_id?: string
+          conciliacao_observacao?: string | null
+          conciliado_em?: string | null
+          conciliado_por?: string | null
+          conta_destino_id?: string | null
+          conta_origem_id?: string | null
+          created_at?: string
+          data?: string
+          descricao?: string
+          estorno_de_id?: string | null
+          fornecedor_cliente_id?: string | null
+          fornecedor_cliente_texto?: string | null
+          id?: string
+          motivo_estorno?: string | null
+          natureza?: Database["public"]["Enums"]["natureza_lancamento"]
+          observacoes?: string | null
+          responsavel_id?: string
+          ri?: string | null
+          tipo_operacao_id?: string
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lancamentos_centro_custo_id_fkey"
+            columns: ["centro_custo_id"]
+            isOneToOne: false
+            referencedRelation: "centros_de_custo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_conciliado_por_fkey"
+            columns: ["conciliado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_conta_destino_id_fkey"
+            columns: ["conta_destino_id"]
+            isOneToOne: false
+            referencedRelation: "contas_bancarias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_conta_origem_id_fkey"
+            columns: ["conta_origem_id"]
+            isOneToOne: false
+            referencedRelation: "contas_bancarias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_estorno_de_id_fkey"
+            columns: ["estorno_de_id"]
+            isOneToOne: false
+            referencedRelation: "lancamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_fornecedor_cliente_id_fkey"
+            columns: ["fornecedor_cliente_id"]
+            isOneToOne: false
+            referencedRelation: "fornecedores_clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_responsavel_id_profiles_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_tipo_operacao_id_fkey"
+            columns: ["tipo_operacao_id"]
+            isOneToOne: false
+            referencedRelation: "tipos_operacao"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       periodos_fechados: {
         Row: {
@@ -188,7 +342,16 @@ export type Database = {
           reaberto_por?: string | null
           totals_hash?: string | null
         }
-        Update: Partial<Database['public']['Tables']['periodos_fechados']['Insert']>
+        Update: {
+          fechado_em?: string
+          fechado_por?: string
+          id?: string
+          motivo_reabertura?: string | null
+          periodo?: string
+          reaberto_em?: string | null
+          reaberto_por?: string | null
+          totals_hash?: string | null
+        }
         Relationships: []
       }
       profiles: {
@@ -200,7 +363,7 @@ export type Database = {
           is_magnata: boolean
           is_superadmin: boolean
           nome_completo: string
-          role: Database['public']['Enums']['user_role']
+          role: Database["public"]["Enums"]["user_role"]
           updated_at: string
         }
         Insert: {
@@ -211,26 +374,20 @@ export type Database = {
           is_magnata?: boolean
           is_superadmin?: boolean
           nome_completo: string
-          role?: Database['public']['Enums']['user_role']
+          role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }
-        Update: Partial<Database['public']['Tables']['profiles']['Insert']>
-        Relationships: []
-      }
-      user_modulos: {
-        Row: {
-          user_id: string
-          modulo: Database['public']['Enums']['modulo_app']
-          granted_by: string | null
-          granted_at: string
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          email?: string
+          id?: string
+          is_magnata?: boolean
+          is_superadmin?: boolean
+          nome_completo?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
         }
-        Insert: {
-          user_id: string
-          modulo: Database['public']['Enums']['modulo_app']
-          granted_by?: string | null
-          granted_at?: string
-        }
-        Update: Partial<Database['public']['Tables']['user_modulos']['Insert']>
         Relationships: []
       }
       saldos_iniciais: {
@@ -250,47 +407,86 @@ export type Database = {
           periodo: string
           valor: number
         }
-        Update: Partial<Database['public']['Tables']['saldos_iniciais']['Insert']>
-        Relationships: []
+        Update: {
+          conta_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          periodo?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saldos_iniciais_conta_id_fkey"
+            columns: ["conta_id"]
+            isOneToOne: false
+            referencedRelation: "contas_bancarias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saldos_iniciais_created_by_profiles_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       solicitacoes_saldo: {
         Row: {
-          id: string
-          solicitante_id: string
-          conta_destino_id: string
-          conta_origem_sugerida_id: string | null
-          valor: number
-          descricao: string
           centro_custo_id: string | null
-          status: Database['public']['Enums']['status_solicitacao']
+          conta_destino_id: string
+          conta_origem_efetiva_id: string | null
+          conta_origem_sugerida_id: string | null
+          created_at: string
+          descricao: string
+          id: string
+          lancamento_gerado_id: string | null
+          motivo_rejeicao: string | null
+          observacao_aprovacao: string | null
           resolvida_em: string | null
           resolvida_por: string | null
-          motivo_rejeicao: string | null
-          conta_origem_efetiva_id: string | null
-          lancamento_gerado_id: string | null
-          observacao_aprovacao: string | null
-          created_at: string
+          solicitante_id: string
+          status: Database["public"]["Enums"]["status_solicitacao"]
           updated_at: string
+          valor: number
         }
         Insert: {
-          id?: string
-          solicitante_id: string
-          conta_destino_id: string
-          conta_origem_sugerida_id?: string | null
-          valor: number
-          descricao: string
           centro_custo_id?: string | null
-          status?: Database['public']['Enums']['status_solicitacao']
+          conta_destino_id: string
+          conta_origem_efetiva_id?: string | null
+          conta_origem_sugerida_id?: string | null
+          created_at?: string
+          descricao: string
+          id?: string
+          lancamento_gerado_id?: string | null
+          motivo_rejeicao?: string | null
+          observacao_aprovacao?: string | null
           resolvida_em?: string | null
           resolvida_por?: string | null
-          motivo_rejeicao?: string | null
-          conta_origem_efetiva_id?: string | null
-          lancamento_gerado_id?: string | null
-          observacao_aprovacao?: string | null
-          created_at?: string
+          solicitante_id: string
+          status?: Database["public"]["Enums"]["status_solicitacao"]
           updated_at?: string
+          valor: number
         }
-        Update: Partial<Database['public']['Tables']['solicitacoes_saldo']['Insert']>
+        Update: {
+          centro_custo_id?: string | null
+          conta_destino_id?: string
+          conta_origem_efetiva_id?: string | null
+          conta_origem_sugerida_id?: string | null
+          created_at?: string
+          descricao?: string
+          id?: string
+          lancamento_gerado_id?: string | null
+          motivo_rejeicao?: string | null
+          observacao_aprovacao?: string | null
+          resolvida_em?: string | null
+          resolvida_por?: string | null
+          solicitante_id?: string
+          status?: Database["public"]["Enums"]["status_solicitacao"]
+          updated_at?: string
+          valor?: number
+        }
         Relationships: []
       }
       tipos_operacao: {
@@ -310,7 +506,14 @@ export type Database = {
           is_transferencia?: boolean
           nome: string
         }
-        Update: Partial<Database['public']['Tables']['tipos_operacao']['Insert']>
+        Update: {
+          ativo?: boolean
+          codigo?: string
+          created_at?: string
+          id?: string
+          is_transferencia?: boolean
+          nome?: string
+        }
         Relationships: []
       }
       user_contas_permitidas: {
@@ -330,7 +533,35 @@ export type Database = {
           pode_ver?: boolean
           user_id: string
         }
-        Update: Partial<Database['public']['Tables']['user_contas_permitidas']['Insert']>
+        Update: {
+          conta_id?: string
+          granted_at?: string
+          granted_by?: string | null
+          pode_lancar?: boolean
+          pode_ver?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_modulos: {
+        Row: {
+          granted_at: string
+          granted_by: string | null
+          modulo: Database["public"]["Enums"]["modulo_app"]
+          user_id: string
+        }
+        Insert: {
+          granted_at?: string
+          granted_by?: string | null
+          modulo: Database["public"]["Enums"]["modulo_app"]
+          user_id: string
+        }
+        Update: {
+          granted_at?: string
+          granted_by?: string | null
+          modulo?: Database["public"]["Enums"]["modulo_app"]
+          user_id?: string
+        }
         Relationships: []
       }
     }
@@ -352,55 +583,15 @@ export type Database = {
       }
       v_contas_saldo: {
         Row: {
-          conta_id: string | null
           apelido: string | null
-          tipo: Database['public']['Enums']['conta_tipo'] | null
-          banco: string | null
-          numero: string | null
-          empresa_id: string | null
-          empresa: string | null
           ativo: boolean | null
-          saldo_atual: number | null
-        }
-        Relationships: []
-      }
-      v_saldo_por_empresa: {
-        Row: {
+          banco: string | null
+          conta_id: string | null
+          empresa: string | null
           empresa_id: string | null
-          razao_social: string | null
-          nome_fantasia: string | null
-          saldo_total: number | null
-          qtd_contas: number | null
-        }
-        Relationships: []
-      }
-      v_fluxo_mensal: {
-        Row: {
-          periodo: string | null
-          entradas: number | null
-          saidas: number | null
-          liquido: number | null
-          qtd_lancamentos: number | null
-        }
-        Relationships: []
-      }
-      v_fluxo_diario: {
-        Row: {
-          data: string | null
-          entradas: number | null
-          saidas: number | null
-        }
-        Relationships: []
-      }
-      v_top_fornecedores: {
-        Row: {
-          fornecedor_id: string | null
-          nome: string | null
-          pessoa_tipo: Database['public']['Enums']['pessoa_tipo'] | null
-          documento: string | null
-          total_saidas: number | null
-          qtd_lancamentos: number | null
-          ultima_movimentacao: string | null
+          numero: string | null
+          saldo_atual: number | null
+          tipo: Database["public"]["Enums"]["conta_tipo"] | null
         }
         Relationships: []
       }
@@ -429,6 +620,24 @@ export type Database = {
         }
         Relationships: []
       }
+      v_fluxo_diario: {
+        Row: {
+          data: string | null
+          entradas: number | null
+          saidas: number | null
+        }
+        Relationships: []
+      }
+      v_fluxo_mensal: {
+        Row: {
+          entradas: number | null
+          liquido: number | null
+          periodo: string | null
+          qtd_lancamentos: number | null
+          saidas: number | null
+        }
+        Relationships: []
+      }
       v_movimentos: {
         Row: {
           centro_custo_id: string | null
@@ -452,7 +661,7 @@ export type Database = {
           data: string | null
           descricao: string | null
           id: string | null
-          natureza: Database['public']['Enums']['natureza_lancamento'] | null
+          natureza: Database["public"]["Enums"]["natureza_lancamento"] | null
           responsavel_id: string | null
           responsavel_nome: string | null
           valor: number | null
@@ -463,7 +672,7 @@ export type Database = {
         Row: {
           conta: string | null
           conta_id: string | null
-          conta_tipo: Database['public']['Enums']['conta_tipo'] | null
+          conta_tipo: Database["public"]["Enums"]["conta_tipo"] | null
           empresa: string | null
           empresa_id: string | null
           entradas: number | null
@@ -493,84 +702,227 @@ export type Database = {
         }
         Relationships: []
       }
+      v_saldo_por_empresa: {
+        Row: {
+          empresa_id: string | null
+          nome_fantasia: string | null
+          qtd_contas: number | null
+          razao_social: string | null
+          saldo_total: number | null
+        }
+        Relationships: []
+      }
+      v_top_fornecedores: {
+        Row: {
+          documento: string | null
+          fornecedor_id: string | null
+          nome: string | null
+          pessoa_tipo: Database["public"]["Enums"]["pessoa_tipo"] | null
+          qtd_lancamentos: number | null
+          total_saidas: number | null
+          ultima_movimentacao: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      apagar_dados_teste: {
+        Args: never
+        Returns: {
+          audit_log_removidos: number
+          lancamentos_removidos: number
+          periodos_removidos: number
+          saldos_iniciais_removidos: number
+          solicitacoes_removidas: number
+        }[]
+      }
       aprovar_solicitacao_saldo: {
         Args: {
-          p_solic_id: string
+          p_centro_custo_id?: string
           p_conta_origem_id: string
           p_observacao?: string
-          p_centro_custo_id?: string
+          p_solic_id: string
         }
         Returns: string
+      }
+      grant_default_modulos: {
+        Args: { p_grantor?: string; p_user_id: string }
+        Returns: undefined
       }
       is_admin_financeiro: { Args: never; Returns: boolean }
       is_superadmin: { Args: never; Returns: boolean }
       is_usuario_ativo: { Args: never; Returns: boolean }
+      magnata_alertas: { Args: never; Returns: Json }
+      magnata_kpis: { Args: never; Returns: Json }
+      magnata_projecao_caixa: {
+        Args: { p_dias?: number }
+        Returns: {
+          banda_inferior: number
+          banda_superior: number
+          data: string
+          saldo_projetado: number
+        }[]
+      }
+      meus_modulos: {
+        Args: never
+        Returns: {
+          modulo: Database["public"]["Enums"]["modulo_app"]
+        }[]
+      }
       periodo_esta_fechado: { Args: { p_data: string }; Returns: boolean }
       pode_lancar_conta: { Args: { p_conta_id: string }; Returns: boolean }
       pode_ver_conta: { Args: { p_conta_id: string }; Returns: boolean }
-      rejeitar_solicitacao_saldo: { Args: { p_solic_id: string; p_motivo: string }; Returns: void }
-      saldo_atual_conta: { Args: { p_conta_id: string }; Returns: number }
-      pode_ver_modulo: { Args: { p_modulo: Database['public']['Enums']['modulo_app'] }; Returns: boolean }
-      meus_modulos: { Args: never; Returns: { modulo: Database['public']['Enums']['modulo_app'] }[] }
-      magnata_kpis: { Args: never; Returns: Record<string, unknown> }
-      magnata_alertas: { Args: never; Returns: Record<string, unknown>[] }
-      magnata_projecao_caixa: {
-        Args: { p_dias?: number }
-        Returns: { data: string; saldo_projetado: number; banda_inferior: number; banda_superior: number }[]
+      pode_ver_modulo: {
+        Args: { p_modulo: Database["public"]["Enums"]["modulo_app"] }
+        Returns: boolean
       }
+      rejeitar_solicitacao_saldo: {
+        Args: { p_motivo: string; p_solic_id: string }
+        Returns: undefined
+      }
+      saldo_atual_conta: { Args: { p_conta_id: string }; Returns: number }
     }
     Enums: {
       acao_audit:
-        | 'CREATE'
-        | 'UPDATE'
-        | 'DELETE'
-        | 'LOCK'
-        | 'UNLOCK'
-        | 'APPROVE'
-        | 'REJECT'
-        | 'OVERRIDE'
-      conta_tipo: 'CORRENTE' | 'POUPANCA' | 'CAIXA_FISICO' | 'CARTAO_CREDITO_CONTA'
+        | "CREATE"
+        | "UPDATE"
+        | "DELETE"
+        | "LOCK"
+        | "UNLOCK"
+        | "APPROVE"
+        | "REJECT"
+        | "OVERRIDE"
+      conta_tipo:
+        | "CORRENTE"
+        | "POUPANCA"
+        | "CAIXA_FISICO"
+        | "CARTAO_CREDITO_CONTA"
       modulo_app:
-        | 'dashboard'
-        | 'saldo_geral'
-        | 'centros_de_custo'
-        | 'conferencia'
-        | 'conciliacao'
-        | 'lancamentos'
-        | 'fornecedores'
-        | 'solicitacoes'
-        | 'solicitacoes_aprovar'
-        | 'auditoria'
-        | 'periodos'
-        | 'saldos_iniciais'
-        | 'permissoes'
-        | 'empresas'
-        | 'contas'
-        | 'centros_admin'
-        | 'tipos_operacao'
-        | 'magnata_dashboard'
-      natureza_lancamento: 'ENTRADA' | 'SAIDA'
-      pessoa_tipo: 'PF' | 'PJ'
-      status_solicitacao: 'PENDENTE' | 'APROVADA' | 'REJEITADA' | 'CANCELADA'
-      user_role: 'admin_financeiro' | 'usuario_financeiro'
+        | "dashboard"
+        | "saldo_geral"
+        | "centros_de_custo"
+        | "conferencia"
+        | "conciliacao"
+        | "lancamentos"
+        | "fornecedores"
+        | "solicitacoes"
+        | "solicitacoes_aprovar"
+        | "auditoria"
+        | "periodos"
+        | "saldos_iniciais"
+        | "permissoes"
+        | "empresas"
+        | "contas"
+        | "centros_admin"
+        | "tipos_operacao"
+        | "magnata_dashboard"
+      natureza_lancamento: "ENTRADA" | "SAIDA"
+      pessoa_tipo: "PF" | "PJ"
+      status_solicitacao: "PENDENTE" | "APROVADA" | "REJEITADA" | "CANCELADA"
+      user_role: "admin_financeiro" | "usuario_financeiro"
     }
-    CompositeTypes: { [_ in never]: never }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
 }
 
-type DatabaseWithoutInternals = Omit<Database, '__InternalSupabase'>
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, 'public'>]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
-  T extends keyof (DefaultSchema['Tables'] & DefaultSchema['Views']),
-> = (DefaultSchema['Tables'] & DefaultSchema['Views'])[T] extends { Row: infer R } ? R : never
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
 
-export type TablesInsert<T extends keyof DefaultSchema['Tables']> =
-  DefaultSchema['Tables'][T] extends { Insert: infer I } ? I : never
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
 
-export type TablesUpdate<T extends keyof DefaultSchema['Tables']> =
-  DefaultSchema['Tables'][T] extends { Update: infer U } ? U : never
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
 
-export type Enums<T extends keyof DefaultSchema['Enums']> = DefaultSchema['Enums'][T]
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never

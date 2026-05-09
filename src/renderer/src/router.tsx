@@ -29,6 +29,7 @@ import { AdminSolicitacoesPage } from './pages/AdminSolicitacoes'
 import { NotFoundPage } from './pages/NotFound'
 import { AccessDeniedPage } from './pages/AccessDenied'
 import AtualizacoesPage from './pages/Atualizacoes'
+import AdminLimpezaPage from './pages/AdminLimpeza'
 import MagnataVisaoPage from './pages/magnata/Visao'
 import MagnataLiquidezPage from './pages/magnata/Liquidez'
 import MagnataFluxoPage from './pages/magnata/Fluxo'
@@ -176,6 +177,7 @@ const adminChildren: RouteObject[] = [
     children: [
       { index: true, element: <Navigate to="/iam/usuarios" replace /> },
       { path: 'usuarios', element: <AdminUsuariosPage /> },
+      { path: 'limpeza', element: <AdminLimpezaPage /> },
     ],
   },
   {

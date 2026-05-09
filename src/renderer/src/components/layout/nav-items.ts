@@ -18,6 +18,7 @@ import {
   Send,
   Inbox,
   CloudDownload,
+  Trash2,
 } from 'lucide-react'
 import type { NavItem } from './Sidebar'
 
@@ -138,6 +139,7 @@ export const USER_ADMIN_NAV: NavItem[] = [
 
 export const IAM_NAV: NavItem[] = [
   { to: '/iam/usuarios', label: 'Usuários', icon: Users, end: true },
+  { to: '/iam/limpeza', label: 'Limpeza de dados', icon: Trash2 },
 ]
 
 export const ATUALIZACOES_NAV: NavItem = {
