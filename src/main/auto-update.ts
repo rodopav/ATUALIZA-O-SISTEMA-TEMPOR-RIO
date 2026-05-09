@@ -17,14 +17,17 @@ function pushUpdate(win: BrowserWindow, payload: UpdatePushPayload): void {
 }
 
 /**
- * Detecta o canal pelo productName/appId — cada um dos 3 apps publica num
- * feed diferente (latest.yml / admin.yml / magnata.yml) na mesma release
- * do GitHub. Sem isso, o app errado baixa o instalador errado.
+ * Cada um dos 3 apps publica num feed diferente
+ * (latest.yml / admin.yml / magnata.yml) na mesma release do GitHub.
+ * O mode é fixed em build-time pelo Vite via import.meta.env.MODE,
+ * que vem do electron-vite (--mode user/admin/magnata). Não dá pra
+ * usar app.getName() porque os 3 apps compartilham o mesmo package.json
+ * name e retornariam 'sistema-financeiro-rodopav' para todos.
  */
 function detectChannel(): string {
-  const name = app.getName().toLowerCase()
-  if (name.includes('admin')) return 'admin'
-  if (name.includes('magnata')) return 'magnata'
+  const mode = import.meta.env.MODE
+  if (mode === 'admin') return 'admin'
+  if (mode === 'magnata') return 'magnata'
   return 'latest'
 }
 

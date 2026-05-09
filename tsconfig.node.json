@@ -14,7 +14,7 @@
     "isolatedModules": true,
     "useDefineForClassFields": true,
     "verbatimModuleSyntax": false,
-    "types": ["node", "electron"],
+    "types": ["node", "electron", "vite/client"],
     "baseUrl": ".",
     "paths": {
       "@shared/*": ["src/shared/*"]
