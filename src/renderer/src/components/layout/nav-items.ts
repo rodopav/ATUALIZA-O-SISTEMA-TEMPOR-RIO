@@ -49,6 +49,12 @@ export const USER_OPERATION_BASE: NavItem[] = [
     modulo: 'conferencia',
   },
   {
+    to: '/dashboard/conciliacao',
+    label: 'Conciliação',
+    icon: BookCheck,
+    modulo: 'conciliacao',
+  },
+  {
     to: '/solicitacoes',
     label: 'Solicitações',
     icon: Send,
@@ -56,14 +62,9 @@ export const USER_OPERATION_BASE: NavItem[] = [
   },
 ]
 
-export const USER_OPERATION_ADMIN_EXTRA: NavItem[] = [
-  {
-    to: '/dashboard/conciliacao',
-    label: 'Conciliação',
-    icon: BookCheck,
-    modulo: 'conciliacao',
-  },
-]
+// Mantido para compat; vazio agora — Conciliação foi promovida pra BASE
+// e o filtro por módulo já controla visibilidade.
+export const USER_OPERATION_ADMIN_EXTRA: NavItem[] = []
 
 export const USER_CADASTROS_NAV: NavItem[] = [
   {
