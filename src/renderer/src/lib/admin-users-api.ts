@@ -97,6 +97,12 @@ export const adminUsersApi = {
       () => undefined,
     )
   },
+  /** Define uma nova senha sem precisar de email (superadmin escolhe). */
+  setPassword(input: { id: string; password: string }): Promise<void> {
+    return invoke<{ ok: true }>('set-password', { ...input }).then(
+      () => undefined,
+    )
+  },
   invite(input: InviteUserInput): Promise<void> {
     return invoke<{ user: unknown }>('invite', { ...input }).then(
       () => undefined,

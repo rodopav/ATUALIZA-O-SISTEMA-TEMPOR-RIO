@@ -4,6 +4,7 @@ import {
   MoreHorizontal,
   Pencil,
   Key,
+  KeyRound,
   Trash2,
   ShieldCheck,
   Crown,
@@ -31,6 +32,7 @@ interface RowMenuProps {
   selfId: string | undefined
   onEdit: (u: IamUser) => void
   onResetPassword: (u: IamUser) => void
+  onSetPassword: (u: IamUser) => void
   onDelete: (u: IamUser) => void
 }
 
@@ -39,6 +41,7 @@ function RowMenu({
   selfId,
   onEdit,
   onResetPassword,
+  onSetPassword,
   onDelete,
 }: RowMenuProps): React.ReactElement {
   const isSelf = selfId === user.id
@@ -59,11 +62,14 @@ function RowMenu({
         <DropdownMenuItem onSelect={() => onEdit(user)}>
           <Pencil className="mr-2 h-4 w-4" /> Editar perfil
         </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => onSetPassword(user)}>
+          <KeyRound className="mr-2 h-4 w-4" /> Definir nova senha
+        </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={() => onResetPassword(user)}
           disabled={!user.email}
         >
-          <Key className="mr-2 h-4 w-4" /> Redefinir senha
+          <Key className="mr-2 h-4 w-4" /> Enviar link de redefinição (email)
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
@@ -82,6 +88,7 @@ export interface UsuariosColumnHandlers {
   selfId: string | undefined
   onEdit: (u: IamUser) => void
   onResetPassword: (u: IamUser) => void
+  onSetPassword: (u: IamUser) => void
   onDelete: (u: IamUser) => void
 }
 
@@ -184,6 +191,7 @@ export function buildUsuariosColumns(
           selfId={handlers.selfId}
           onEdit={handlers.onEdit}
           onResetPassword={handlers.onResetPassword}
+          onSetPassword={handlers.onSetPassword}
           onDelete={handlers.onDelete}
         />
       ),

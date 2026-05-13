@@ -16,6 +16,7 @@ import { useToast } from '../components/ui/use-toast'
 import { UserCreateDialog } from '../components/admin/usuarios/UserCreateDialog'
 import { UserEditDialog } from '../components/admin/usuarios/UserEditDialog'
 import { UserDeleteDialog } from '../components/admin/usuarios/UserDeleteDialog'
+import { SetPasswordDialog } from '../components/admin/usuarios/SetPasswordDialog'
 import { buildUsuariosColumns } from '../components/admin/usuarios/usuarios-columns'
 import { KpiCard } from '../components/dashboards/KpiCard'
 import { useAuthStore } from '../lib/auth-store'
@@ -39,6 +40,7 @@ export function AdminUsuariosPage(): React.ReactElement {
   const [createOpen, setCreateOpen] = React.useState(false)
   const [editTarget, setEditTarget] = React.useState<IamUser | null>(null)
   const [deleteTarget, setDeleteTarget] = React.useState<IamUser | null>(null)
+  const [setPwdTarget, setSetPwdTarget] = React.useState<IamUser | null>(null)
 
   const query = useQuery({
     queryKey: adminUsersKeys.all,
@@ -99,6 +101,7 @@ export function AdminUsuariosPage(): React.ReactElement {
         onResetPassword: (u) => {
           if (u.email) resetMut.mutate(u.email)
         },
+        onSetPassword: setSetPwdTarget,
         onDelete: setDeleteTarget,
       }),
     [profile?.id, resetMut],
@@ -186,6 +189,11 @@ export function AdminUsuariosPage(): React.ReactElement {
           deleteTarget && deleteMut.mutate(deleteTarget.id)
         }
         onClose={() => setDeleteTarget(null)}
+      />
+      <SetPasswordDialog
+        user={setPwdTarget}
+        open={!!setPwdTarget}
+        onOpenChange={(v) => !v && setSetPwdTarget(null)}
       />
 
       {query.error ? (
