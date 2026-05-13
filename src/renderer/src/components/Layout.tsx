@@ -109,7 +109,7 @@ function roleLabelFor(isSuperadmin: boolean, isAdmin: boolean): string {
 export function Layout(): React.ReactElement {
   useSessionRedirect()
   // Conecta no realtime do chat (toast + invalidate de queries)
-  useChatRealtime({ activeOtherUserId: null })
+  useChatRealtime()
   const navigate = useNavigate()
   const profile = useAuthStore((s) => s.profile)
   const isAdmin = useAuthStore((s) => s.isAdmin)

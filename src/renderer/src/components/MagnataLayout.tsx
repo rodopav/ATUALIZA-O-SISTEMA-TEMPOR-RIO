@@ -43,7 +43,7 @@ const NAV: MagnataNavItem[] = [
 
 export function MagnataLayout(): React.ReactElement {
   useSessionRedirect()
-  useChatRealtime({ activeOtherUserId: null })
+  useChatRealtime()
   const navigate = useNavigate()
   const profile = useAuthStore((s) => s.profile)
   const logout = useAuthStore((s) => s.logout)

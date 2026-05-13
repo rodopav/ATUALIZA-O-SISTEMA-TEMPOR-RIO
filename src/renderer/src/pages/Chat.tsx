@@ -38,7 +38,7 @@ import {
   type ChatContato,
   type ChatMessage,
 } from '../lib/chat-queries'
-import { useChatRealtime } from '../lib/use-chat-realtime'
+import { useChatActiveStore } from '../lib/chat-active-store'
 
 interface ConversaUI {
   outroId: string
@@ -91,11 +91,17 @@ export function ChatPage(): React.ReactElement {
 
   const [selectedKey, setSelectedKey] = React.useState<string | null>(null)
   const [newDialogOpen, setNewDialogOpen] = React.useState(false)
+  const setActiveOther = useChatActiveStore((s) => s.setActive)
 
-  // Realtime: conecta no canal e mantém queries fresh
-  useChatRealtime({
-    activeOtherUserId: selectedKey ? selectedKey.split('::')[0] ?? null : null,
-  })
+  // Atualiza o store global pra que o useChatRealtime (montado no Layout)
+  // saiba qual thread está aberta e não dispare toast pra ela.
+  React.useEffect(() => {
+    const otherId = selectedKey
+      ? (selectedKey.includes('::') ? null : selectedKey)
+      : null
+    setActiveOther(otherId)
+    return () => setActiveOther(null)
+  }, [selectedKey, setActiveOther])
 
   const conversasQ = useQuery(conversasQuery)
 

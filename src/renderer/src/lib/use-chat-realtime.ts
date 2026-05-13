@@ -4,32 +4,30 @@ import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import { chatKeys, type ChatMessage } from './chat-queries'
 import { useAuthStore } from './auth-store'
+import { useChatActiveStore } from './chat-active-store'
 import { toast } from '../components/ui/use-toast'
 
 /**
+ * IMPORTANTE: este hook só pode ser montado em UM componente da árvore
+ * (Layout ou MagnataLayout). Chamar em mais de um lugar causa erro
+ * "cannot add postgres_changes callbacks ... after subscribe()" porque
+ * o supabase reusa canais pelo nome.
+ *
  * Conecta no canal Realtime do Supabase para chat_messages.
- * Inserts vindos pra mim disparam:
- *   1. invalidação das queries (conversas, thread ativa, unread total)
- *   2. toast de notificação (se a thread não está aberta na tela)
+ * Inserts disparam:
+ *   1. invalidação das queries (conversas, threads, unread total)
+ *   2. toast de notificação se a thread não está aberta (lendo
+ *      `activeOtherUserId` do store global useChatActiveStore)
  *
  * Filtro server-side: `recipient_id=eq.<eu>` + `sender_id=eq.<eu>` (2 subs).
- * Superadmin também recebe TUDO via filtro extra.
+ * Superadmin recebe TUDO (sem filtro).
  */
-export function useChatRealtime(opts: {
-  activeOtherUserId?: string | null
-}): void {
+export function useChatRealtime(): void {
   const qc = useQueryClient()
   const session = useAuthStore((s) => s.session)
   const profile = useAuthStore((s) => s.profile)
   const meuId = session?.user.id ?? null
   const isSuper = profile?.is_superadmin === true
-
-  // Mantemos uma ref pro activeOtherUserId pra que o handler veja o valor
-  // atualizado sem precisar reconectar o canal a cada mudança de thread.
-  const activeRef = React.useRef<string | null>(opts.activeOtherUserId ?? null)
-  React.useEffect(() => {
-    activeRef.current = opts.activeOtherUserId ?? null
-  }, [opts.activeOtherUserId])
 
   React.useEffect(() => {
     if (!meuId) return
@@ -39,18 +37,13 @@ export function useChatRealtime(opts: {
       const msg = payload.new
       if (!msg) return
 
-      // Invalida queries afetadas
       void qc.invalidateQueries({ queryKey: chatKeys.conversas })
       void qc.invalidateQueries({ queryKey: chatKeys.unread })
-      void qc.invalidateQueries({
-        queryKey: ['chat', 'thread'],
-      })
+      void qc.invalidateQueries({ queryKey: ['chat', 'thread'] })
 
-      // Toast só se mensagem veio PRA MIM e a thread não está aberta
-      if (
-        msg.recipient_id === meuId &&
-        activeRef.current !== msg.sender_id
-      ) {
+      // Lê valor atualizado do store sem re-criar o canal a cada mudança.
+      const activeId = useChatActiveStore.getState().activeOtherUserId
+      if (msg.recipient_id === meuId && activeId !== msg.sender_id) {
         toast({
           title: 'Nova mensagem',
           description: msg.body.slice(0, 120),
@@ -59,14 +52,12 @@ export function useChatRealtime(opts: {
     }
 
     if (isSuper) {
-      // Superadmin: ouve TODOS os inserts
       channel.on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'chat_messages' },
         handleInsert,
       )
     } else {
-      // Usuário comum: ouve apenas mensagens onde é recipient ou sender
       channel.on(
         'postgres_changes',
         {
