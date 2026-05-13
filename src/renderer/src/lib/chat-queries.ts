@@ -9,7 +9,17 @@ import type { Tables } from '../../../shared/database.types'
 
 export type ChatMessage = Tables<'chat_messages'>
 export type ChatConversa = Tables<'v_chat_conversas'>
-export type ChatContato = Tables<'v_chat_contatos'>
+
+// A view tinha problema com RLS (security_invoker bloqueava usuário comum
+// de ler outros profiles). Usamos RPC SECURITY DEFINER que devolve só
+// campos não-sensíveis. Tipo declarado manualmente.
+export interface ChatContato {
+  id: string
+  nome_completo: string
+  role: string
+  is_superadmin: boolean
+  is_magnata: boolean
+}
 
 export const chatKeys = {
   all: ['chat'] as const,
@@ -34,15 +44,25 @@ export const conversasQuery = queryOptions({
 export const contatosQuery = queryOptions({
   queryKey: chatKeys.contatos,
   queryFn: async (): Promise<ChatContato[]> => {
-    const { data, error } = await supabase
-      .from('v_chat_contatos')
-      .select('*')
-      .order('nome_completo', { ascending: true })
+    // RPC SECURITY DEFINER — não passa pela RLS de profiles.
+    // Devolve apenas campos não-sensíveis (id, nome, role, flags).
+    const { data, error } = await supabase.rpc('chat_listar_contatos')
     if (error) throw error
-    return data ?? []
+    return (data ?? []) as ChatContato[]
   },
   staleTime: 5 * 60_000,
 })
+
+export async function fetchContatoPorId(
+  id: string,
+): Promise<ChatContato | null> {
+  const { data, error } = await supabase.rpc('chat_contato_por_id', {
+    p_id: id,
+  })
+  if (error) throw error
+  const arr = (data ?? []) as ChatContato[]
+  return arr[0] ?? null
+}
 
 export const unreadTotalQuery = queryOptions({
   queryKey: chatKeys.unread,

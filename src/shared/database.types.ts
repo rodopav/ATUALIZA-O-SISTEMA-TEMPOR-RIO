@@ -707,6 +707,26 @@ export type Database = {
       }
       chat_marcar_lidas: { Args: { p_sender_id: string }; Returns: number }
       chat_nao_lidas_total: { Args: never; Returns: number }
+      chat_listar_contatos: {
+        Args: never
+        Returns: {
+          id: string
+          nome_completo: string
+          role: string
+          is_superadmin: boolean
+          is_magnata: boolean
+        }[]
+      }
+      chat_contato_por_id: {
+        Args: { p_id: string }
+        Returns: {
+          id: string
+          nome_completo: string
+          role: string
+          is_superadmin: boolean
+          is_magnata: boolean
+        }[]
+      }
       grant_default_modulos: {
         Args: { p_grantor?: string; p_user_id: string }
         Returns: undefined

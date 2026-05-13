@@ -34,7 +34,7 @@ import {
   enviarMensagem,
   marcarLidas,
   chatKeys,
-  type ChatConversa,
+  fetchContatoPorId,
   type ChatContato,
   type ChatMessage,
 } from '../lib/chat-queries'
@@ -139,10 +139,44 @@ export function ChatPage(): React.ReactElement {
     })
   }, [conversasQ.data, meuId, isSuper])
 
-  const selected = React.useMemo<ConversaUI | null>(
+  const existingSelected = React.useMemo<ConversaUI | null>(
     () => conversas.find((c) => c.outroId === selectedKey) ?? null,
     [conversas, selectedKey],
   )
+
+  // Quando o usuário inicia uma conversa nova com alguém que ainda não tem
+  // mensagens, busca o contato e cria uma ConversaUI sintética.
+  const [pendingContato, setPendingContato] = React.useState<ChatContato | null>(
+    null,
+  )
+  React.useEffect(() => {
+    if (!selectedKey || existingSelected || selectedKey.includes('::')) {
+      setPendingContato(null)
+      return
+    }
+    let cancelled = false
+    void fetchContatoPorId(selectedKey).then((c) => {
+      if (!cancelled) setPendingContato(c)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [selectedKey, existingSelected])
+
+  const selected: ConversaUI | null =
+    existingSelected ??
+    (pendingContato
+      ? {
+          outroId: pendingContato.id,
+          outroNome: pendingContato.nome_completo,
+          outroRole: pendingContato.role,
+          meuLado: true,
+          ultimaMsg: null,
+          ultimaMsgEm: null,
+          ultimaSenderId: null,
+          naoLidas: 0,
+        }
+      : null)
 
   return (
     <div className="space-y-6">
@@ -254,7 +288,7 @@ export function ChatPage(): React.ReactElement {
         open={newDialogOpen}
         onOpenChange={setNewDialogOpen}
         onSelect={(c) => {
-          setSelectedKey(c.id!)
+          setSelectedKey(c.id)
           setNewDialogOpen(false)
         }}
       />
@@ -481,7 +515,7 @@ function NovaConversaDialog({
     if (!q.trim()) return list
     const needle = q.toLowerCase()
     return list.filter((c) =>
-      (c.nome_completo ?? '').toLowerCase().includes(needle),
+      c.nome_completo.toLowerCase().includes(needle),
     )
   }, [contatosQ.data, q])
 
@@ -524,16 +558,16 @@ function NovaConversaDialog({
                 className="flex w-full items-center gap-3 rounded-md border bg-card px-3 py-2 text-left text-sm transition-colors hover:bg-accent"
               >
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold uppercase text-primary">
-                  {(c.nome_completo ?? '?').slice(0, 2)}
+                  {c.nome_completo.slice(0, 2)}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{c.nome_completo}</p>
                   <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
                     {specialIcon(c)}
-                    <span>{c.role ?? '—'}</span>
+                    <span>{c.role}</span>
                   </div>
                 </div>
-                {roleBadge(c.role ?? '')}
+                {roleBadge(c.role)}
               </button>
             ))
           )}
