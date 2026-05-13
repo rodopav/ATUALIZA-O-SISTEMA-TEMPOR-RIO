@@ -10,11 +10,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
+  __InternalSupabase: { PostgrestVersion: "14.5" }
   public: {
     Tables: {
       audit_log: {
@@ -57,15 +53,7 @@ export type Database = {
           valores_antes?: Json | null
           valores_depois?: Json | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "audit_log_usuario_id_profiles_fkey"
-            columns: ["usuario_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       centros_de_custo: {
         Row: {
@@ -88,6 +76,33 @@ export type Database = {
           created_at?: string
           id?: string
           nome?: string
+        }
+        Relationships: []
+      }
+      chat_messages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          read_at: string | null
+          recipient_id: string
+          sender_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          recipient_id: string
+          sender_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          recipient_id?: string
+          sender_id?: string
         }
         Relationships: []
       }
@@ -125,15 +140,7 @@ export type Database = {
           numero?: string | null
           tipo?: Database["public"]["Enums"]["conta_tipo"]
         }
-        Relationships: [
-          {
-            foreignKeyName: "contas_bancarias_empresa_id_fkey"
-            columns: ["empresa_id"]
-            isOneToOne: false
-            referencedRelation: "empresas"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       empresas: {
         Row: {
@@ -262,64 +269,7 @@ export type Database = {
           updated_at?: string
           valor?: number
         }
-        Relationships: [
-          {
-            foreignKeyName: "lancamentos_centro_custo_id_fkey"
-            columns: ["centro_custo_id"]
-            isOneToOne: false
-            referencedRelation: "centros_de_custo"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lancamentos_conciliado_por_fkey"
-            columns: ["conciliado_por"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lancamentos_conta_destino_id_fkey"
-            columns: ["conta_destino_id"]
-            isOneToOne: false
-            referencedRelation: "contas_bancarias"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lancamentos_conta_origem_id_fkey"
-            columns: ["conta_origem_id"]
-            isOneToOne: false
-            referencedRelation: "contas_bancarias"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lancamentos_estorno_de_id_fkey"
-            columns: ["estorno_de_id"]
-            isOneToOne: false
-            referencedRelation: "lancamentos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lancamentos_fornecedor_cliente_id_fkey"
-            columns: ["fornecedor_cliente_id"]
-            isOneToOne: false
-            referencedRelation: "fornecedores_clientes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lancamentos_responsavel_id_profiles_fkey"
-            columns: ["responsavel_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lancamentos_tipo_operacao_id_fkey"
-            columns: ["tipo_operacao_id"]
-            isOneToOne: false
-            referencedRelation: "tipos_operacao"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       periodos_fechados: {
         Row: {
@@ -415,22 +365,7 @@ export type Database = {
           periodo?: string
           valor?: number
         }
-        Relationships: [
-          {
-            foreignKeyName: "saldos_iniciais_conta_id_fkey"
-            columns: ["conta_id"]
-            isOneToOne: false
-            referencedRelation: "contas_bancarias"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "saldos_iniciais_created_by_profiles_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       solicitacoes_saldo: {
         Row: {
@@ -566,6 +501,31 @@ export type Database = {
       }
     }
     Views: {
+      v_chat_contatos: {
+        Row: {
+          id: string | null
+          is_magnata: boolean | null
+          is_superadmin: boolean | null
+          nome_completo: string | null
+          role: string | null
+        }
+        Relationships: []
+      }
+      v_chat_conversas: {
+        Row: {
+          nao_lidas: number | null
+          ultima_msg: string | null
+          ultima_msg_em: string | null
+          ultima_sender_id: string | null
+          user_a: string | null
+          user_a_nome: string | null
+          user_a_role: string | null
+          user_b: string | null
+          user_b_nome: string | null
+          user_b_role: string | null
+        }
+        Relationships: []
+      }
       v_conferencia: {
         Row: {
           contas_divergentes: number | null
@@ -745,6 +705,8 @@ export type Database = {
         }
         Returns: string
       }
+      chat_marcar_lidas: { Args: { p_sender_id: string }; Returns: number }
+      chat_nao_lidas_total: { Args: never; Returns: number }
       grant_default_modulos: {
         Args: { p_grantor?: string; p_user_id: string }
         Returns: undefined
@@ -765,9 +727,7 @@ export type Database = {
       }
       meus_modulos: {
         Args: never
-        Returns: {
-          modulo: Database["public"]["Enums"]["modulo_app"]
-        }[]
+        Returns: { modulo: Database["public"]["Enums"]["modulo_app"] }[]
       }
       periodo_esta_fechado: { Args: { p_data: string }; Returns: boolean }
       pode_lancar_conta: { Args: { p_conta_id: string }; Returns: boolean }
@@ -821,9 +781,7 @@ export type Database = {
       status_solicitacao: "PENDENTE" | "APROVADA" | "REJEITADA" | "CANCELADA"
       user_role: "admin_financeiro" | "usuario_financeiro"
     }
-    CompositeTypes: {
-      [_ in never]: never
-    }
+    CompositeTypes: { [_ in never]: never }
   }
 }
 

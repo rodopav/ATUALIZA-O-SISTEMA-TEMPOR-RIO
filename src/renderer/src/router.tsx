@@ -30,6 +30,7 @@ import { NotFoundPage } from './pages/NotFound'
 import { AccessDeniedPage } from './pages/AccessDenied'
 import AtualizacoesPage from './pages/Atualizacoes'
 import AdminLimpezaPage from './pages/AdminLimpeza'
+import ChatPage from './pages/Chat'
 import MagnataVisaoPage from './pages/magnata/Visao'
 import MagnataLiquidezPage from './pages/magnata/Liquidez'
 import MagnataFluxoPage from './pages/magnata/Fluxo'
@@ -117,6 +118,11 @@ const userChildren: RouteObject[] = [
     element: <AtualizacoesPage />,
   },
   {
+    path: '/chat',
+    loader: requireAuth,
+    element: <ChatPage />,
+  },
+  {
     path: '/admin',
     loader: requireAdmin,
     children: [
@@ -185,6 +191,11 @@ const adminChildren: RouteObject[] = [
     loader: requireAuth,
     element: <AtualizacoesPage />,
   },
+  {
+    path: '/chat',
+    loader: requireAuth,
+    element: <ChatPage />,
+  },
 ]
 
 const magnataChildren: RouteObject[] = [
@@ -206,6 +217,11 @@ const magnataChildren: RouteObject[] = [
     path: '/atualizacoes',
     loader: requireAuth,
     element: <AtualizacoesPage />,
+  },
+  {
+    path: '/chat',
+    loader: requireAuth,
+    element: <ChatPage />,
   },
 ]
 

@@ -11,6 +11,7 @@ import {
   Sparkles,
   ListChecks,
   CloudDownload,
+  MessageSquare,
   X,
 } from 'lucide-react'
 import { useAuthStore } from '../lib/auth-store'
@@ -18,6 +19,7 @@ import { Button } from './ui/button'
 import { cn } from '../lib/cn'
 import { MagnataTopbar } from './layout/MagnataTopbar'
 import { useSessionRedirect } from '../lib/use-session-redirect'
+import { useChatRealtime } from '../lib/use-chat-realtime'
 
 interface MagnataNavItem {
   to: string
@@ -35,11 +37,13 @@ const NAV: MagnataNavItem[] = [
   { to: '/magnata/saude', label: 'Saúde do Sistema', icon: Activity },
   { to: '/magnata/tendencias', label: 'Tendências', icon: Sparkles },
   { to: '/magnata/lancamentos', label: 'Lançamentos', icon: ListChecks },
+  { to: '/chat', label: 'Chat', icon: MessageSquare },
   { to: '/atualizacoes', label: 'Atualizações', icon: CloudDownload },
 ]
 
 export function MagnataLayout(): React.ReactElement {
   useSessionRedirect()
+  useChatRealtime({ activeOtherUserId: null })
   const navigate = useNavigate()
   const profile = useAuthStore((s) => s.profile)
   const logout = useAuthStore((s) => s.logout)

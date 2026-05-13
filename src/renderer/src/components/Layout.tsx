@@ -11,6 +11,7 @@ import {
   USER_ADMIN_NAV,
   IAM_NAV,
   ATUALIZACOES_NAV,
+  CHAT_NAV,
 } from './layout/nav-items'
 import { pendentesCountQuery } from '../lib/solicitacoes-queries'
 import {
@@ -18,6 +19,8 @@ import {
   type ModuloApp,
 } from '../lib/modulos-queries'
 import { useSessionRedirect } from '../lib/use-session-redirect'
+import { unreadTotalQuery } from '../lib/chat-queries'
+import { useChatRealtime } from '../lib/use-chat-realtime'
 
 const APP_MODE = (import.meta.env.VITE_APP_MODE ?? 'user') as
   | 'user'
@@ -30,6 +33,7 @@ interface BuildSectionsArgs {
   isAdmin: boolean
   isSuperadmin: boolean
   pendentesCount: number
+  chatUnread: number
   modulos: Set<ModuloApp> | undefined
 }
 
@@ -49,11 +53,17 @@ function buildSections({
   isAdmin,
   isSuperadmin,
   pendentesCount,
+  chatUnread,
   modulos,
 }: BuildSectionsArgs): NavSection[] {
+  const chatNav: NavItem = {
+    ...CHAT_NAV,
+    badgeCount: chatUnread > 0 ? chatUnread : undefined,
+  }
   if (APP_MODE === 'admin') {
     return [
       { label: 'Acesso', items: IAM_NAV },
+      { label: 'Comunicação', items: [chatNav] },
       { label: 'Sistema', items: [ATUALIZACOES_NAV] },
     ]
   }
@@ -85,6 +95,7 @@ function buildSections({
       sections.push({ label: 'Administração', items: adminItems })
     }
   }
+  sections.push({ label: 'Comunicação', items: [chatNav] })
   sections.push({ label: 'Sistema', items: [ATUALIZACOES_NAV] })
   return sections
 }
@@ -97,6 +108,8 @@ function roleLabelFor(isSuperadmin: boolean, isAdmin: boolean): string {
 
 export function Layout(): React.ReactElement {
   useSessionRedirect()
+  // Conecta no realtime do chat (toast + invalidate de queries)
+  useChatRealtime({ activeOtherUserId: null })
   const navigate = useNavigate()
   const profile = useAuthStore((s) => s.profile)
   const isAdmin = useAuthStore((s) => s.isAdmin)
@@ -116,6 +129,9 @@ export function Layout(): React.ReactElement {
     ...meusModulosQuery,
     enabled: APP_MODE === 'user' && !isAdmin && !isSuperadmin,
   })
+
+  const chatUnreadQ = useQuery(unreadTotalQuery)
+  const chatUnread = chatUnreadQ.data ?? 0
 
   React.useEffect(() => {
     let active = true
@@ -155,9 +171,10 @@ export function Layout(): React.ReactElement {
         isAdmin,
         isSuperadmin,
         pendentesCount,
+        chatUnread,
         modulos: modulosQ.data,
       }),
-    [isAdmin, isSuperadmin, pendentesCount, modulosQ.data],
+    [isAdmin, isSuperadmin, pendentesCount, chatUnread, modulosQ.data],
   )
   const roleLabel = roleLabelFor(isSuperadmin, isAdmin)
   const sidebarMode: 'user' | 'admin' = APP_MODE === 'admin' ? 'admin' : 'user'

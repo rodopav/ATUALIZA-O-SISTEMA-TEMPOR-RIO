@@ -19,6 +19,7 @@ import {
   Inbox,
   CloudDownload,
   Trash2,
+  MessageSquare,
 } from 'lucide-react'
 import type { NavItem } from './Sidebar'
 
@@ -147,4 +148,10 @@ export const ATUALIZACOES_NAV: NavItem = {
   to: '/atualizacoes',
   label: 'Atualizações',
   icon: CloudDownload,
+}
+
+export const CHAT_NAV: NavItem = {
+  to: '/chat',
+  label: 'Chat',
+  icon: MessageSquare,
 }
