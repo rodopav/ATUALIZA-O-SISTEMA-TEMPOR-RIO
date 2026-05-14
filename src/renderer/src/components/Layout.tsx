@@ -22,6 +22,12 @@ import { useSessionRedirect } from '../lib/use-session-redirect'
 import { unreadTotalQuery } from '../lib/chat-queries'
 import { useChatRealtime } from '../lib/use-chat-realtime'
 import { useModulosRealtime } from '../lib/use-modulos-realtime'
+import {
+  useTabRouteSync,
+  useTabShortcuts,
+  useAltTabFromMain,
+} from '../lib/use-tab-shortcuts'
+import { TabSwitcher } from './layout/TabSwitcher'
 
 const APP_MODE = (import.meta.env.VITE_APP_MODE ?? 'user') as
   | 'user'
@@ -115,6 +121,8 @@ export function Layout(): React.ReactElement {
   useChatRealtime()
   // Escuta mudanças nas próprias permissões e atualiza sidebar
   useModulosRealtime()
+  // Cada rota visitada vira aba persistente
+  useTabRouteSync()
   const navigate = useNavigate()
   const profile = useAuthStore((s) => s.profile)
   const isAdmin = useAuthStore((s) => s.isAdmin)
@@ -123,6 +131,15 @@ export function Layout(): React.ReactElement {
   const loading = useAuthStore((s) => s.loading)
   const [version, setVersion] = React.useState<string>('')
   const [mobileOpen, setMobileOpen] = React.useState(false)
+  const [switcherOpen, setSwitcherOpen] = React.useState(false)
+
+  const openSwitcher = React.useCallback(() => setSwitcherOpen(true), [])
+  const closeSwitcher = React.useCallback(() => setSwitcherOpen(false), [])
+
+  // Atalhos: Ctrl+Tab, Ctrl+W, Ctrl+1..9, Ctrl+K
+  useTabShortcuts({ onOpenSwitcher: openSwitcher })
+  // Alt+Tab capturado pelo main (before-input-event) → IPC abre o switcher
+  useAltTabFromMain(openSwitcher)
 
   const pendentesQ = useQuery({
     ...pendentesCountQuery,
@@ -223,6 +240,7 @@ export function Layout(): React.ReactElement {
           loading={loading}
           onLogout={() => void handleLogout()}
           onOpenMobileMenu={() => setMobileOpen(true)}
+          onOpenTabSwitcher={openSwitcher}
         />
         <main className="flex-1 overflow-x-hidden p-4 md:p-8">
           <div className="mx-auto w-full max-w-[1400px]">
@@ -230,6 +248,8 @@ export function Layout(): React.ReactElement {
           </div>
         </main>
       </div>
+
+      <TabSwitcher open={switcherOpen} onClose={closeSwitcher} />
     </div>
   )
 }

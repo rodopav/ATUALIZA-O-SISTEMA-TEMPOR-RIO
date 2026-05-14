@@ -51,6 +51,10 @@ const api = {
     return subscribe<MenuActionPayload>(PUSH_CHANNELS.menuAction, cb)
   },
 
+  onTabSwitcher(cb: () => void): Unsubscribe {
+    return subscribe<void>(PUSH_CHANNELS.tabSwitcher, () => cb())
+  },
+
   async openExternal(url: string): Promise<void> {
     await ipcRenderer.invoke('shell:open-external', { url })
   },

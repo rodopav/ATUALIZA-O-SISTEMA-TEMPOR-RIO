@@ -5,6 +5,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import log from 'electron-log/main'
 import { getStore } from './safe-storage.js'
+import { PUSH_CHANNELS } from '../shared/ipc-contracts.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -89,6 +90,22 @@ export function createWindow(): BrowserWindow {
       shell.openExternal(url).catch((err) => log.error('[window] openExternal falhou:', err))
     }
     return { action: 'deny' }
+  })
+
+  // Intercepta Alt+Tab (e Alt+`) ANTES do Windows pegar, pra abrir o
+  // switcher de abas. Vale apenas quando a janela tá focada — fora dela,
+  // o Alt+Tab do SO funciona normal.
+  win.webContents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown') return
+    const isAltTab =
+      input.alt &&
+      !input.control &&
+      !input.meta &&
+      (input.key === 'Tab' || input.code === 'Tab')
+    if (isAltTab) {
+      event.preventDefault()
+      win.webContents.send(PUSH_CHANNELS.tabSwitcher)
+    }
   })
 
   // Bloqueia navegação para fora da app.

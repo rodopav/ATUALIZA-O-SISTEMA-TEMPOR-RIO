@@ -12,6 +12,7 @@ import {
 } from '../ui/dropdown-menu'
 import { cn } from '../../lib/cn'
 import type { Profile } from '../../types/profile'
+import { TabBar } from './TabBar'
 
 interface TopbarProps {
   profile: Profile | null
@@ -19,6 +20,7 @@ interface TopbarProps {
   loading: boolean
   onLogout: () => void
   onOpenMobileMenu: () => void
+  onOpenTabSwitcher: () => void
 }
 
 function getInitials(name: string | null | undefined): string {
@@ -36,6 +38,7 @@ export function Topbar({
   loading,
   onLogout,
   onOpenMobileMenu,
+  onOpenTabSwitcher,
 }: TopbarProps): React.ReactElement {
   const initials = getInitials(profile?.nome_completo)
 
@@ -52,7 +55,9 @@ export function Topbar({
         <Menu className="h-4 w-4" />
       </Button>
 
-      <div className="flex flex-1 items-center justify-end gap-2">
+      <TabBar onOpenSwitcher={onOpenTabSwitcher} />
+
+      <div className="flex shrink-0 items-center gap-2">
         <Button
           type="button"
           variant="ghost"

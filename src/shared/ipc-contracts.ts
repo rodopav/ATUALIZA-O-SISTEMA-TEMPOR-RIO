@@ -91,6 +91,8 @@ export const PUSH_CHANNELS = {
   updateEvent: 'update:event',
   deepLink: 'deep-link',
   menuAction: 'menu:action',
+  /** Main pede ao renderer pra abrir o switcher de abas (Alt+Tab capturado). */
+  tabSwitcher: 'tab:switcher',
 } as const
 
 export type UpdatePushPayload =
