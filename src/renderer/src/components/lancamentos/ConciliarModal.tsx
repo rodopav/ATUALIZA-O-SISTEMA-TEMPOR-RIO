@@ -54,8 +54,14 @@ export function ConciliarModal({
       })
     },
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['lancamentos'] })
-      void qc.invalidateQueries({ queryKey: ['conciliacao'] })
+      void qc.invalidateQueries({
+        queryKey: ['lancamentos'],
+        refetchType: 'active',
+      })
+      void qc.invalidateQueries({
+        queryKey: ['conciliacao'],
+        refetchType: 'active',
+      })
       toast({
         title: 'Lançamento conciliado',
         description: 'O registro foi marcado como conciliado.',

@@ -34,6 +34,7 @@ import { buildLancamentosCsvColumns } from '../components/lancamentos/lancamento
 import { useAuthStore } from '../lib/auth-store'
 import { desfazerConciliacao } from '../lib/conciliacao-queries'
 import { toast } from '../components/ui/use-toast'
+import { SaldoStickyBar } from '../components/lancamentos/SaldoStickyBar'
 
 function useDebounced<T>(value: T, delay: number): T {
   const [debounced, setDebounced] = React.useState(value)
@@ -121,8 +122,14 @@ export function LancamentosPage(): React.ReactElement {
   const desfazerMut = useMutation({
     mutationFn: (id: string) => desfazerConciliacao(id),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['lancamentos'] })
-      void qc.invalidateQueries({ queryKey: ['conciliacao'] })
+      void qc.invalidateQueries({
+        queryKey: ['lancamentos'],
+        refetchType: 'active',
+      })
+      void qc.invalidateQueries({
+        queryKey: ['conciliacao'],
+        refetchType: 'active',
+      })
       toast({
         title: 'Conciliação desfeita',
         description: 'O lançamento voltou ao status pendente.',
@@ -204,6 +211,21 @@ export function LancamentosPage(): React.ReactElement {
 
   const data = lancamentosQ.data ?? []
 
+  const periodoLabel = React.useMemo(() => {
+    if (filters.dataInicio && filters.dataFim) {
+      const fmt = (iso: string): string => {
+        const [y, m, d] = iso.split('-')
+        return `${d}/${m}/${y?.slice(2)}`
+      }
+      return `${fmt(filters.dataInicio)} a ${fmt(filters.dataFim)}`
+    }
+    if (filters.periodoMonth) {
+      const [y, m] = filters.periodoMonth.split('-')
+      return `${m}/${y}`
+    }
+    return 'todos os períodos'
+  }, [filters.dataInicio, filters.dataFim, filters.periodoMonth])
+
   const handleExportCsv = React.useCallback((): void => {
     if (data.length === 0) return
     const periodoTag = filters.periodoMonth ?? 'todos'
@@ -255,6 +277,8 @@ export function LancamentosPage(): React.ReactElement {
           <AlertDescription>{errorMsg}</AlertDescription>
         </Alert>
       ) : null}
+
+      <SaldoStickyBar rows={data} periodoLabel={periodoLabel} />
 
       <Card>
         <CardContent className="p-0">

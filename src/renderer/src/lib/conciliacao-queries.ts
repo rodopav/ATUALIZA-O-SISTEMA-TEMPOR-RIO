@@ -5,13 +5,20 @@ import type { Tables } from '../../../shared/database.types'
 export type PendenteConciliacaoRow = Tables<'v_pendentes_conciliacao'>
 
 export interface PendentesFilters {
-  /** Primeiro dia do mês (YYYY-MM-DD). */
-  periodo: string
+  /** Primeiro dia do mês (YYYY-MM-DD) — usado quando dataInicio/Fim ausentes. */
+  periodo?: string | null
+  /** Intervalo custom (sobrepõe periodo). */
+  dataInicio?: string | null
+  dataFimExclusive?: string | null
+  /** Filtra por conta bancária (origem OU destino). */
+  contaId?: string | null
 }
 
 export const conciliacaoKeys = {
-  pendentes: (periodo: string) => ['conciliacao', 'pendentes', periodo] as const,
-  resumo: (periodo: string) => ['conciliacao', 'resumo', periodo] as const,
+  pendentes: (filters: PendentesFilters) =>
+    ['conciliacao', 'pendentes', filters] as const,
+  resumo: (filters: PendentesFilters) =>
+    ['conciliacao', 'resumo', filters] as const,
 }
 
 function periodoBounds(periodo: string): { start: string; end: string } {
@@ -25,17 +32,34 @@ function periodoBounds(periodo: string): { start: string; end: string } {
   return { start: fmt(startDate), end: fmt(endDate) }
 }
 
+function resolveRange(
+  f: PendentesFilters,
+): { start: string; end: string } | null {
+  if (f.dataInicio && f.dataFimExclusive) {
+    return { start: f.dataInicio, end: f.dataFimExclusive }
+  }
+  if (f.periodo) return periodoBounds(f.periodo)
+  return null
+}
+
 export const pendentesQuery = (filters: PendentesFilters) =>
   queryOptions({
-    queryKey: conciliacaoKeys.pendentes(filters.periodo),
+    queryKey: conciliacaoKeys.pendentes(filters),
     queryFn: async (): Promise<PendenteConciliacaoRow[]> => {
-      const { start, end } = periodoBounds(filters.periodo)
-      const { data, error } = await supabase
+      const range = resolveRange(filters)
+      let q = supabase
         .from('v_pendentes_conciliacao')
         .select('*')
-        .gte('data', start)
-        .lt('data', end)
         .order('data', { ascending: false })
+      if (range) {
+        q = q.gte('data', range.start).lt('data', range.end)
+      }
+      if (filters.contaId) {
+        q = q.or(
+          `conta_origem_id.eq.${filters.contaId},conta_destino_id.eq.${filters.contaId}`,
+        )
+      }
+      const { data, error } = await q
       if (error) throw error
       return data ?? []
     },
@@ -49,28 +73,28 @@ export interface ConciliacaoResumo {
   percentualConciliado: number
 }
 
-export const conciliacaoResumoQuery = (periodo: string) =>
+export const conciliacaoResumoQuery = (filters: PendentesFilters) =>
   queryOptions({
-    queryKey: conciliacaoKeys.resumo(periodo),
+    queryKey: conciliacaoKeys.resumo(filters),
     queryFn: async (): Promise<ConciliacaoResumo> => {
-      const { start, end } = periodoBounds(periodo)
-      // Total de lançamentos do período (excluindo estornos para coerência).
-      const totalQ = supabase
-        .from('lancamentos')
-        .select('*', { count: 'exact', head: true })
-        .gte('data', start)
-        .lt('data', end)
-        .is('estorno_de_id', null)
-
-      const conciliadosQ = supabase
-        .from('lancamentos')
-        .select('*', { count: 'exact', head: true })
-        .gte('data', start)
-        .lt('data', end)
-        .is('estorno_de_id', null)
-        .not('conciliado_em', 'is', null)
-
-      const [totalRes, conciliadosRes] = await Promise.all([totalQ, conciliadosQ])
+      const range = resolveRange(filters)
+      const buildBase = () => {
+        let q = supabase
+          .from('lancamentos')
+          .select('*', { count: 'exact', head: true })
+          .is('estorno_de_id', null)
+        if (range) q = q.gte('data', range.start).lt('data', range.end)
+        if (filters.contaId) {
+          q = q.or(
+            `conta_origem_id.eq.${filters.contaId},conta_destino_id.eq.${filters.contaId}`,
+          )
+        }
+        return q
+      }
+      const [totalRes, conciliadosRes] = await Promise.all([
+        buildBase(),
+        buildBase().not('conciliado_em', 'is', null),
+      ])
       if (totalRes.error) throw totalRes.error
       if (conciliadosRes.error) throw conciliadosRes.error
 
@@ -90,7 +114,10 @@ export interface ConciliarInput {
 }
 
 export async function conciliarLancamento(input: ConciliarInput): Promise<void> {
-  const { error } = await supabase
+  // `.select()` força o Supabase a retornar as linhas afetadas. Sem isso,
+  // se a RLS bloqueia silenciosamente (0 rows updated, sem erro), a
+  // mutation julgava sucesso e o toast mentia. Agora a gente detecta.
+  const { data, error } = await supabase
     .from('lancamentos')
     .update({
       conciliado_em: new Date().toISOString(),
@@ -98,11 +125,17 @@ export async function conciliarLancamento(input: ConciliarInput): Promise<void> 
       conciliacao_observacao: input.observacao?.trim() || null,
     })
     .eq('id', input.id)
+    .select('id, conciliado_em')
   if (error) throw error
+  if (!data || data.length === 0) {
+    throw new Error(
+      'Não foi possível conciliar este lançamento. Você pode não ter permissão, ou o lançamento já não existe.',
+    )
+  }
 }
 
 export async function desfazerConciliacao(id: string): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('lancamentos')
     .update({
       conciliado_em: null,
@@ -110,5 +143,11 @@ export async function desfazerConciliacao(id: string): Promise<void> {
       conciliacao_observacao: null,
     })
     .eq('id', id)
+    .select('id, conciliado_em')
   if (error) throw error
+  if (!data || data.length === 0) {
+    throw new Error(
+      'Não foi possível desfazer a conciliação. Você pode não ter permissão.',
+    )
+  }
 }

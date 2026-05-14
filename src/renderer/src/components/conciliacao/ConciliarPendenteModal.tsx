@@ -54,8 +54,16 @@ export function ConciliarPendenteModal({
       })
     },
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['conciliacao'] })
-      void qc.invalidateQueries({ queryKey: ['lancamentos'] })
+      // refetchType: 'active' garante refetch imediato de queries
+      // montadas (não só marcação como stale).
+      void qc.invalidateQueries({
+        queryKey: ['conciliacao'],
+        refetchType: 'active',
+      })
+      void qc.invalidateQueries({
+        queryKey: ['lancamentos'],
+        refetchType: 'active',
+      })
       toast({
         title: 'Lançamento conciliado',
         variant: 'success',
