@@ -20,6 +20,7 @@ import {
   type LancamentoRow,
 } from '../lib/lancamentos-queries'
 import { centrosCustoQuery } from '../lib/queries'
+import { contasLookupQuery } from '../lib/contas-lookup-query'
 import { mapError } from '../lib/error-mapper'
 import { cn } from '../lib/cn'
 import { downloadCsv } from '../lib/csv-export'
@@ -67,6 +68,7 @@ export function LancamentosPage(): React.ReactElement {
     }),
   )
   const centrosQ = useQuery(centrosCustoQuery)
+  const contasLookupQ = useQuery(contasLookupQuery)
 
   const desfazerMut = useMutation({
     mutationFn: (id: string) => desfazerConciliacao(id),
@@ -133,16 +135,19 @@ export function LancamentosPage(): React.ReactElement {
 
   const columns = React.useMemo(
     () =>
-      buildLancamentoColumns({
-        onEdit: handleEdit,
-        onEstornar: handleEstornar,
-        onView: handleView,
-        onConciliar: handleConciliar,
-        onDesfazerConciliacao: handleDesfazer,
-        isAdmin,
-      }),
+      buildLancamentoColumns(
+        {
+          onEdit: handleEdit,
+          onEstornar: handleEstornar,
+          onView: handleView,
+          onConciliar: handleConciliar,
+          onDesfazerConciliacao: handleDesfazer,
+          isAdmin,
+        },
+        { contasLookup: contasLookupQ.data },
+      ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [navigate, isAdmin, handleConciliar, handleDesfazer],
+    [navigate, isAdmin, handleConciliar, handleDesfazer, contasLookupQ.data],
   )
 
   const errorMsg = lancamentosQ.error

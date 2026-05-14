@@ -18,9 +18,28 @@ import type { LancamentoRow } from '../../lib/lancamentos-queries'
 
 export type ColumnHandlers = LancamentoActionHandlers
 
+export interface BuildColumnsOptions {
+  /**
+   * Map opcional id→apelido pra resolver nome de conta quando o embed
+   * vier null por RLS (usuário não tem permissão na conta da outra ponta).
+   * Carregado via contasLookupQuery (público apenas o nome).
+   */
+  contasLookup?: Map<string, string>
+}
+
 export function buildLancamentoColumns(
   handlers: ColumnHandlers,
+  opts: BuildColumnsOptions = {},
 ): ColumnDef<LancamentoRow, unknown>[] {
+  const lookup = opts.contasLookup
+  const resolveApelido = (
+    embedded: { apelido: string } | null | undefined,
+    id: string | null | undefined,
+  ): string | null => {
+    if (embedded?.apelido) return embedded.apelido
+    if (id && lookup) return lookup.get(id) ?? null
+    return null
+  }
   return [
     {
       accessorKey: 'data',
@@ -110,8 +129,8 @@ export function buildLancamentoColumns(
       header: 'Conta',
       cell: (ctx) => {
         const row = ctx.row.original
-        const origem = row.conta_origem?.apelido
-        const destino = row.conta_destino?.apelido
+        const origem = resolveApelido(row.conta_origem, row.conta_origem_id)
+        const destino = resolveApelido(row.conta_destino, row.conta_destino_id)
         const isTransfer = row.tipo?.is_transferencia ?? false
         if (isTransfer && origem && destino) {
           return (

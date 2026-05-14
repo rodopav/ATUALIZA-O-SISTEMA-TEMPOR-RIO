@@ -541,6 +541,13 @@ export type Database = {
         }
         Relationships: []
       }
+      v_contas_lookup: {
+        Row: {
+          id: string | null
+          apelido: string | null
+        }
+        Relationships: []
+      }
       v_contas_saldo: {
         Row: {
           apelido: string | null
