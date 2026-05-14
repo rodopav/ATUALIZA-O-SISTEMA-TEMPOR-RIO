@@ -22,7 +22,11 @@ import {
 import { centrosCustoQuery } from '../lib/queries'
 import { contasLookupQuery } from '../lib/contas-lookup-query'
 import { fornecedoresQuery } from '../lib/lancamentos-queries'
-import { tiposOperacaoQuery, responsaveisQuery } from '../lib/filtros-queries'
+import {
+  tiposOperacaoQuery,
+  responsaveisQuery,
+  contasFiltroQuery,
+} from '../lib/filtros-queries'
 import { mapError } from '../lib/error-mapper'
 import { cn } from '../lib/cn'
 import { downloadCsv } from '../lib/csv-export'
@@ -86,17 +90,18 @@ export function LancamentosPage(): React.ReactElement {
   )
   const centrosQ = useQuery(centrosCustoQuery)
   const contasLookupQ = useQuery(contasLookupQuery)
+  const contasFiltroQ = useQuery(contasFiltroQuery)
   const fornecedoresQ = useQuery(fornecedoresQuery)
   const tiposQ = useQuery(tiposOperacaoQuery)
   const responsaveisQ = useQuery(responsaveisQuery)
 
+  // Opções do dropdown de banco: RESPEITAM RLS (usuário comum só vê
+  // suas contas). `contasLookupQ` continua sendo usado pra resolver
+  // nomes de contas que aparecem nas linhas (label visual, não-filtro).
   const contasOptions = React.useMemo(
     () =>
-      Array.from(contasLookupQ.data?.entries() ?? []).map(([id, label]) => ({
-        id,
-        label,
-      })),
-    [contasLookupQ.data],
+      (contasFiltroQ.data ?? []).map((c) => ({ id: c.id, label: c.apelido })),
+    [contasFiltroQ.data],
   )
   const responsaveisOptions = React.useMemo(
     () =>
