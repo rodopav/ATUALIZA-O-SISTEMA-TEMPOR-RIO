@@ -21,6 +21,8 @@ import {
 } from '../lib/lancamentos-queries'
 import { centrosCustoQuery } from '../lib/queries'
 import { contasLookupQuery } from '../lib/contas-lookup-query'
+import { fornecedoresQuery } from '../lib/lancamentos-queries'
+import { tiposOperacaoQuery, responsaveisQuery } from '../lib/filtros-queries'
 import { mapError } from '../lib/error-mapper'
 import { cn } from '../lib/cn'
 import { downloadCsv } from '../lib/csv-export'
@@ -59,16 +61,57 @@ export function LancamentosPage(): React.ReactElement {
     ? `${filters.periodoMonth}-01`
     : null
 
+  const parseNumOrNull = (s: string): number | null => {
+    if (!s) return null
+    const n = Number.parseFloat(s.replace(',', '.'))
+    return Number.isFinite(n) ? n : null
+  }
+
   const lancamentosQ = useQuery(
     lancamentosListQuery({
       periodo: periodoIso,
+      dataInicio: filters.dataInicio || null,
+      dataFim: filters.dataFim || null,
       natureza: filters.natureza,
       centroCustoId: filters.centroCustoId,
+      contaId: filters.contaId,
+      responsavelId: filters.responsavelId,
+      fornecedorId: filters.fornecedorId,
+      tipoOperacaoId: filters.tipoOperacaoId,
+      status: filters.status,
+      valorMin: parseNumOrNull(filters.valorMin),
+      valorMax: parseNumOrNull(filters.valorMax),
       search: debouncedSearch,
     }),
   )
   const centrosQ = useQuery(centrosCustoQuery)
   const contasLookupQ = useQuery(contasLookupQuery)
+  const fornecedoresQ = useQuery(fornecedoresQuery)
+  const tiposQ = useQuery(tiposOperacaoQuery)
+  const responsaveisQ = useQuery(responsaveisQuery)
+
+  const contasOptions = React.useMemo(
+    () =>
+      Array.from(contasLookupQ.data?.entries() ?? []).map(([id, label]) => ({
+        id,
+        label,
+      })),
+    [contasLookupQ.data],
+  )
+  const responsaveisOptions = React.useMemo(
+    () =>
+      (responsaveisQ.data ?? []).map((r) => ({ id: r.id, label: r.nome })),
+    [responsaveisQ.data],
+  )
+  const fornecedoresOptions = React.useMemo(
+    () =>
+      (fornecedoresQ.data ?? []).map((f) => ({ id: f.id, label: f.nome })),
+    [fornecedoresQ.data],
+  )
+  const tiposOptions = React.useMemo(
+    () => (tiposQ.data ?? []).map((t) => ({ id: t.id, label: t.nome })),
+    [tiposQ.data],
+  )
 
   const desfazerMut = useMutation({
     mutationFn: (id: string) => desfazerConciliacao(id),
@@ -194,6 +237,10 @@ export function LancamentosPage(): React.ReactElement {
         value={filters}
         onChange={setFilters}
         centrosCusto={centrosQ.data ?? []}
+        contas={contasOptions}
+        responsaveis={responsaveisOptions}
+        fornecedores={fornecedoresOptions}
+        tiposOperacao={tiposOptions}
       />
 
       {errorMsg ? (

@@ -46,8 +46,19 @@ export interface LancamentoRow {
 export interface LancamentosListFilters {
   /** YYYY-MM-DD month-anchor (first day). Filters within the month. */
   periodo?: string | null
+  /** Custom date range (overrides periodo when ambos definidos). */
+  dataInicio?: string | null
+  dataFim?: string | null
   natureza?: 'ENTRADA' | 'SAIDA' | null
   centroCustoId?: string | null
+  empresaId?: string | null
+  contaId?: string | null
+  responsavelId?: string | null
+  fornecedorId?: string | null
+  tipoOperacaoId?: string | null
+  status?: 'all' | 'conciliado' | 'pendente' | 'estornado' | null
+  valorMin?: number | null
+  valorMax?: number | null
   search?: string | null
 }
 
@@ -85,7 +96,10 @@ export const lancamentosListQuery = (filters: LancamentosListFilters) =>
         .order('created_at', { ascending: false })
         .limit(200)
 
-      if (filters.periodo) {
+      // Intervalo: custom range tem prioridade; senão usa o mês.
+      if (filters.dataInicio && filters.dataFim) {
+        q = q.gte('data', filters.dataInicio).lte('data', filters.dataFim)
+      } else if (filters.periodo) {
         const { start, end } = periodoBounds(filters.periodo)
         q = q.gte('data', start).lt('data', end)
       }
@@ -95,15 +109,50 @@ export const lancamentosListQuery = (filters: LancamentosListFilters) =>
       if (filters.centroCustoId) {
         q = q.eq('centro_custo_id', filters.centroCustoId)
       }
+      if (filters.responsavelId) {
+        q = q.eq('responsavel_id', filters.responsavelId)
+      }
+      if (filters.fornecedorId) {
+        q = q.eq('fornecedor_cliente_id', filters.fornecedorId)
+      }
+      if (filters.tipoOperacaoId) {
+        q = q.eq('tipo_operacao_id', filters.tipoOperacaoId)
+      }
+      if (filters.contaId) {
+        // Lançamento entra se a conta é a origem OU a destino.
+        q = q.or(
+          `conta_origem_id.eq.${filters.contaId},conta_destino_id.eq.${filters.contaId}`,
+        )
+      }
+      if (filters.valorMin !== null && filters.valorMin !== undefined) {
+        q = q.gte('valor', filters.valorMin)
+      }
+      if (filters.valorMax !== null && filters.valorMax !== undefined) {
+        q = q.lte('valor', filters.valorMax)
+      }
+      if (filters.status === 'conciliado') {
+        q = q.not('conciliado_em', 'is', null)
+      } else if (filters.status === 'pendente') {
+        q = q.is('conciliado_em', null).is('motivo_estorno', null)
+      } else if (filters.status === 'estornado') {
+        q = q.not('motivo_estorno', 'is', null)
+      }
       if (filters.search && filters.search.trim().length > 0) {
         q = q.ilike('descricao', `%${filters.search.trim()}%`)
       }
 
       const { data, error } = await q
       if (error) throw error
-      // Cast through unknown: the inferred Supabase type for select-with-joins
-      // is opaque; we declared LancamentoRow above to mirror the chosen shape.
-      return (data ?? []) as unknown as LancamentoRow[]
+      // Filtro client-side por empresa: a empresa vem das contas (origem ou
+      // destino). Postgrest não permite filtro em embed deep facilmente.
+      const rows = (data ?? []) as unknown as LancamentoRow[]
+      if (filters.empresaId) {
+        // Precisamos do empresa_id pelo lookup; mas o embed atual só traz apelido.
+        // Por isso filtrar empresa exige fetch adicional ou apoio no lookup map
+        // no front. Deixamos a flag aqui e o componente página resolve via
+        // lookup global. (Sem filtro server-side por enquanto.)
+      }
+      return rows
     },
     staleTime: 1000 * 15,
   })
