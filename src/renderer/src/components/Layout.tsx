@@ -84,17 +84,19 @@ function buildSections({
   if (cadastrosItems.length) {
     sections.push({ label: 'Cadastros', items: cadastrosItems })
   }
-  if (isAdmin) {
-    const adminItems: NavItem[] = USER_ADMIN_NAV.filter((it) =>
-      passModulo(it, modulos, isAdmin, isSuperadmin),
-    ).map((item) =>
-      item.to === '/admin/solicitacoes'
-        ? { ...item, badgeCount: pendentesCount }
-        : item,
-    )
-    if (adminItems.length) {
-      sections.push({ label: 'Administração', items: adminItems })
-    }
+  // Admin nav: visível para admin/superadmin (bypass) OU para usuário comum
+  // que tem o módulo específico atribuído via IAM. Antes o bloco inteiro
+  // estava preso em `if (isAdmin)`, então atribuir solicitacoes_aprovar ou
+  // tipos_operacao a um usuário comum não tinha efeito no sidebar.
+  const adminItems: NavItem[] = USER_ADMIN_NAV.filter((it) =>
+    passModulo(it, modulos, isAdmin, isSuperadmin),
+  ).map((item) =>
+    item.to === '/admin/solicitacoes'
+      ? { ...item, badgeCount: pendentesCount }
+      : item,
+  )
+  if (adminItems.length) {
+    sections.push({ label: 'Administração', items: adminItems })
   }
   sections.push({ label: 'Comunicação', items: [chatNav] })
   sections.push({ label: 'Sistema', items: [ATUALIZACOES_NAV] })

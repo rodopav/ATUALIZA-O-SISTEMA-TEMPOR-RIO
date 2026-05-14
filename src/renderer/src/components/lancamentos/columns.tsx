@@ -65,7 +65,7 @@ export function buildLancamentoColumns(
                   ESTORNO
                 </Badge>
               ) : null}
-              {row.estorno ? (
+              {row.motivo_estorno ? (
                 <Badge variant="secondary" className="text-[10px]">
                   ESTORNADO
                 </Badge>

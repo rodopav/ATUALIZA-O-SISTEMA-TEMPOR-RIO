@@ -123,8 +123,11 @@ const userChildren: RouteObject[] = [
     element: <ChatPage />,
   },
   {
+    // Antes este loader era requireAdmin, o que bloqueava usuário comum
+    // mesmo se tivesse o módulo admin atribuído. Agora o requireModulo
+    // de cada filho controla o acesso individual.
     path: '/admin',
-    loader: requireAdmin,
+    loader: requireAuth,
     children: [
       { index: true, element: <Navigate to="/admin/empresas" replace /> },
       {
