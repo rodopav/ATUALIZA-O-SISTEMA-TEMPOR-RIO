@@ -21,6 +21,7 @@ import {
 import { useSessionRedirect } from '../lib/use-session-redirect'
 import { unreadTotalQuery } from '../lib/chat-queries'
 import { useChatRealtime } from '../lib/use-chat-realtime'
+import { useModulosRealtime } from '../lib/use-modulos-realtime'
 
 const APP_MODE = (import.meta.env.VITE_APP_MODE ?? 'user') as
   | 'user'
@@ -110,6 +111,8 @@ export function Layout(): React.ReactElement {
   useSessionRedirect()
   // Conecta no realtime do chat (toast + invalidate de queries)
   useChatRealtime()
+  // Escuta mudanças nas próprias permissões e atualiza sidebar
+  useModulosRealtime()
   const navigate = useNavigate()
   const profile = useAuthStore((s) => s.profile)
   const isAdmin = useAuthStore((s) => s.isAdmin)

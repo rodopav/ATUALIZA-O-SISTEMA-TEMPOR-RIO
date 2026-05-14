@@ -8,8 +8,6 @@ export const modulosKeys = {
   meus: ['modulos', 'meus'] as const,
 }
 
-const FIVE_MIN = 1000 * 60 * 5
-
 /**
  * Lista os módulos que o usuário corrente pode visualizar.
  *
@@ -19,8 +17,9 @@ const FIVE_MIN = 1000 * 60 * 5
  *   `magnata_dashboard` se `is_magnata = true`).
  * - usuário comum → recebe apenas os módulos presentes em `user_modulos`.
  *
- * Cache longo (5min): mudanças exigem refresh manual ou invalidação por
- * mutation (ex.: `setModules` no IAM admin).
+ * Cache curto + Realtime: mudanças do admin no IAM invalidam o cache
+ * imediatamente via subscription a `user_modulos` (use-modulos-realtime).
+ * Stale baixo garante refetch ao trocar de aba/janela.
  */
 export const meusModulosQuery = queryOptions({
   queryKey: modulosKeys.meus,
@@ -40,8 +39,9 @@ export const meusModulosQuery = queryOptions({
     }
     return out
   },
-  staleTime: FIVE_MIN,
-  gcTime: FIVE_MIN,
+  staleTime: 0,
+  refetchOnWindowFocus: true,
+  refetchOnMount: 'always',
 })
 
 /**

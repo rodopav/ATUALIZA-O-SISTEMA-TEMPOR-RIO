@@ -20,6 +20,7 @@ import { cn } from '../lib/cn'
 import { MagnataTopbar } from './layout/MagnataTopbar'
 import { useSessionRedirect } from '../lib/use-session-redirect'
 import { useChatRealtime } from '../lib/use-chat-realtime'
+import { useModulosRealtime } from '../lib/use-modulos-realtime'
 
 interface MagnataNavItem {
   to: string
@@ -44,6 +45,7 @@ const NAV: MagnataNavItem[] = [
 export function MagnataLayout(): React.ReactElement {
   useSessionRedirect()
   useChatRealtime()
+  useModulosRealtime()
   const navigate = useNavigate()
   const profile = useAuthStore((s) => s.profile)
   const logout = useAuthStore((s) => s.logout)

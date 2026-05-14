@@ -96,20 +96,27 @@ export function ModulosMatrixSection({
   }
 
   const mutation = useMutation({
-    mutationFn: () =>
-      adminUsersApi.setModules({
+    mutationFn: async () => {
+      await adminUsersApi.setModules({
         id: user.id,
         modules: Array.from(selected),
-      }),
-    onSuccess: () => {
+      })
+      // Confirma o estado real refazendo o GET imediatamente.
+      const fresh = await adminUsersApi.getModules(user.id)
+      return fresh
+    },
+    onSuccess: (fresh) => {
       void qc.invalidateQueries({
         queryKey: adminUsersKeys.modules(user.id),
       })
       void qc.invalidateQueries({ queryKey: ['modulos', 'meus'] })
+      // Sincroniza com o que está REALMENTE no banco, pra UX não mentir
+      // se o backend tiver alguma normalização.
+      setSelected(new Set(fresh))
       setDirty(false)
       toast({
-        title: 'Módulos atualizados',
-        description: `Definidos ${selected.size} módulo(s) para ${user.profile?.nome_completo ?? user.email}.`,
+        title: 'Módulos salvos',
+        description: `${fresh.length} módulo(s) ativos para ${user.profile?.nome_completo ?? user.email}. O usuário recebe a mudança em tempo real (sem precisar deslogar).`,
         variant: 'success',
       })
     },
