@@ -2,13 +2,20 @@ import { queryOptions, useQuery, type UseQueryResult } from '@tanstack/react-que
 import { supabase } from './supabase'
 import type { Tables, Enums } from '../../../shared/database.types'
 
-// RPCs novas ainda não estão no database.types.ts. Helper que evita erro
-// de TS no nome da função e tipa o retorno via cast no chamador.
-type RpcCaller = (
+// RPCs novas ainda não estão no database.types.ts. Wrapper que ignora a
+// strict typing do nome da função. IMPORTANTE: nunca acessar `supabase.x`
+// no nível do módulo — `supabase` é um Proxy que joga erro se `_client`
+// ainda não foi inicializado (acontece antes do ConfigGate montar).
+// Aqui o acesso só ocorre quando a função é CHAMADA (dentro do queryFn),
+// que sempre é depois do bootstrap.
+async function rpcUntyped(
   fn: string,
   args: Record<string, unknown>,
-) => Promise<{ data: unknown; error: unknown }>
-const rpcUntyped = supabase.rpc as unknown as RpcCaller
+): Promise<{ data: unknown; error: unknown }> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const client = supabase as any
+  return client.rpc(fn, args)
+}
 
 export type CentroCustoDashboardRow = Tables<'v_dashboard_centro_custo'>
 export type ConferenciaRow = Tables<'v_conferencia'>
