@@ -39,9 +39,11 @@ export function LancamentoRowActions({
   const isEstorno = Boolean(row.estorno_de_id)
   const isEstornado = Boolean(row.estorno)
   const isConciliado = Boolean(row.conciliado_em)
-  const canConciliar = Boolean(handlers.isAdmin && handlers.onConciliar)
+  // Conciliar/Desfazer: qualquer usuário com permissão nas contas pode
+  // (RLS no banco que controla). Só esconde se não passou handler.
+  const canConciliar = Boolean(handlers.onConciliar)
   const canDesfazer = Boolean(
-    handlers.isAdmin && handlers.onDesfazerConciliacao && isConciliado,
+    handlers.onDesfazerConciliacao && isConciliado,
   )
 
   return (
