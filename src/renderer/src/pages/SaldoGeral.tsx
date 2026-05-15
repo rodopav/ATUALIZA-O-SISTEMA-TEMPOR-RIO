@@ -1,11 +1,9 @@
 import * as React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
-import { AlertTriangle, CalendarRange, Filter, Download } from 'lucide-react'
+import { AlertTriangle, Filter, Download } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
 import { Card, CardContent } from '../components/ui/card'
-import { Input } from '../components/ui/input'
-import { Label } from '../components/ui/label'
 import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert'
 import { Button } from '../components/ui/button'
 import { EmpresaMultiSelect } from '../components/EmpresaMultiSelect'
@@ -15,7 +13,15 @@ import {
   empresasQuery,
   currentPeriodoIso,
 } from '../lib/queries'
-import { formatPeriodo } from '../lib/format'
+import { saldoGeralIntervaloQuery } from '../lib/dashboards-queries'
+import {
+  PeriodoFilter,
+  defaultPeriodoValue,
+  formatPeriodoFilter,
+  periodoBounds,
+  type PeriodoFilterValue,
+} from '../components/filters/PeriodoFilter'
+import { ContaFilter } from '../components/filters/ContaFilter'
 import { mapError } from '../lib/error-mapper'
 import { cn } from '../lib/cn'
 import { downloadCsv, brlNumber, type CsvColumn } from '../lib/csv-export'
@@ -23,22 +29,15 @@ import type { Tables } from '../../../shared/database.types'
 
 type SaldoRow = Tables<'v_saldo_geral'>
 
-function periodoToInputValue(iso: string): string {
-  return iso.slice(0, 7)
-}
-
-function inputValueToPeriodo(value: string): string {
-  if (!/^\d{4}-\d{2}$/.test(value)) return currentPeriodoIso()
-  return `${value}-01`
-}
-
 export function SaldoGeralPage(): React.ReactElement {
   const [searchParams, setSearchParams] = useSearchParams()
-  const initialPeriodo = currentPeriodoIso()
   const initialDivergentes = searchParams.get('status') === 'DIVERGENTE'
 
-  const [periodo, setPeriodo] = React.useState<string>(initialPeriodo)
+  const [periodo, setPeriodo] = React.useState<PeriodoFilterValue>(() =>
+    defaultPeriodoValue(currentPeriodoIso()),
+  )
   const [empresaIds, setEmpresaIds] = React.useState<string[]>([])
+  const [contaId, setContaId] = React.useState<string | null>(null)
   const [onlyDivergentes, setOnlyDivergentes] = React.useState<boolean>(
     initialDivergentes,
   )
@@ -57,15 +56,47 @@ export function SaldoGeralPage(): React.ReactElement {
     )
   }, [onlyDivergentes, setSearchParams])
 
-  const empresasQ = useQuery(empresasQuery)
-  const saldoQ = useQuery(
-    saldoGeralQuery({ periodo, empresaIds, onlyDivergentes }),
-  )
+  const isIntervalo = periodo.mode === 'intervalo'
+  const bounds = periodoBounds(periodo)
+  const rangeReady =
+    isIntervalo && bounds && periodo.dataInicio && periodo.dataFim
+      ? { dataInicio: bounds.start, dataFim: subtractDay(bounds.endExclusive) }
+      : null
 
-  const errorMsg = saldoQ.error ? mapError(saldoQ.error).description : null
+  const empresasQ = useQuery(empresasQuery)
+
+  const mesQ = useQuery({
+    ...saldoGeralQuery({
+      periodo: periodo.mesIso,
+      empresaIds,
+      onlyDivergentes,
+    }),
+    enabled: !isIntervalo,
+  })
+  const intQ = useQuery({
+    ...saldoGeralIntervaloQuery(
+      rangeReady ?? { dataInicio: '', dataFim: '' },
+      {
+        empresaIds,
+        contaIds: contaId ? [contaId] : undefined,
+        onlyDivergentes,
+      },
+    ),
+    enabled: Boolean(rangeReady),
+  })
+
+  // Filtra client-side por conta no modo mês (no intervalo já filtra server-side)
+  const rawRows = (isIntervalo ? intQ.data : mesQ.data) ?? []
+  const rows = React.useMemo(() => {
+    if (isIntervalo || !contaId) return rawRows
+    return rawRows.filter((r) => r.conta_id === contaId)
+  }, [rawRows, contaId, isIntervalo])
+
+  const queryError = isIntervalo ? intQ.error : mesQ.error
+  const isLoading = isIntervalo ? intQ.isLoading : mesQ.isLoading
+  const errorMsg = queryError ? mapError(queryError).description : null
 
   const handleExportCsv = React.useCallback((): void => {
-    const rows = (saldoQ.data ?? []) as SaldoRow[]
     if (rows.length === 0) return
     const cols: CsvColumn<SaldoRow>[] = [
       { header: 'Empresa', accessor: (r) => r.empresa ?? '' },
@@ -84,23 +115,25 @@ export function SaldoGeralPage(): React.ReactElement {
       },
       { header: 'Saldo Atual', accessor: (r) => brlNumber(r.saldo_atual) },
       { header: 'Status', accessor: (r) => r.status ?? '' },
-      { header: 'Período fechado', accessor: (r) => (r.periodo_fechado ? 'Sim' : 'Não') },
     ]
-    downloadCsv(`saldo-geral-${periodo.slice(0, 7)}.csv`, cols, rows)
-  }, [saldoQ.data, periodo])
+    const tag = isIntervalo
+      ? `${periodo.dataInicio}_a_${periodo.dataFim}`
+      : periodo.mesIso.slice(0, 7)
+    downloadCsv(`saldo-geral-${tag}.csv`, cols, rows)
+  }, [rows, isIntervalo, periodo])
 
   return (
     <div className="space-y-6">
       <PageHeader
         eyebrow="Tesouraria"
         title="Saldo geral"
-        description={`Conferência consolidada das contas — ${formatPeriodo(periodo)}.`}
+        description={`Conferência consolidada das contas — ${formatPeriodoFilter(periodo)}.`}
         actions={
           <Button
             type="button"
             variant="outline"
             onClick={handleExportCsv}
-            disabled={!saldoQ.data || saldoQ.data.length === 0}
+            disabled={rows.length === 0}
           >
             <Download className="h-4 w-4" />
             Exportar CSV
@@ -109,27 +142,15 @@ export function SaldoGeralPage(): React.ReactElement {
       />
 
       <Card>
-        <CardContent className="grid gap-5 p-5 lg:grid-cols-[1fr_2fr_auto] lg:items-end">
-          <div className="space-y-2">
-            <Label htmlFor="periodo-input" className="flex items-center gap-1.5">
-              <CalendarRange className="h-3.5 w-3.5 text-muted-foreground" />
-              Período
-            </Label>
-            <Input
-              id="periodo-input"
-              type="month"
-              value={periodoToInputValue(periodo)}
-              onChange={(e) => setPeriodo(inputValueToPeriodo(e.target.value))}
-            />
-          </div>
-
+        <CardContent className="grid gap-5 p-5 lg:grid-cols-[1fr_1fr_1fr_auto] lg:items-end">
+          <PeriodoFilter value={periodo} onChange={setPeriodo} />
+          <ContaFilter value={contaId} onChange={setContaId} />
           <EmpresaMultiSelect
             empresas={empresasQ.data ?? []}
             value={empresaIds}
             onChange={setEmpresaIds}
             loading={empresasQ.isLoading}
           />
-
           <Button
             id="divergentes-toggle"
             type="button"
@@ -160,12 +181,19 @@ export function SaldoGeralPage(): React.ReactElement {
 
       <Card>
         <CardContent className="p-0">
-          <SaldoGeralTable
-            data={saldoQ.data ?? []}
-            loading={saldoQ.isLoading}
-          />
+          <SaldoGeralTable data={rows} loading={isLoading} />
         </CardContent>
       </Card>
     </div>
   )
+}
+
+function subtractDay(iso: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso
+  const [y, m, d] = iso.split('-').map((s) => Number.parseInt(s, 10))
+  const prev = new Date(y!, m! - 1, (d ?? 1) - 1)
+  const yy = prev.getFullYear()
+  const mm = String(prev.getMonth() + 1).padStart(2, '0')
+  const dd = String(prev.getDate()).padStart(2, '0')
+  return `${yy}-${mm}-${dd}`
 }

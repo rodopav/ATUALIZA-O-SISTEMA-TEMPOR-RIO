@@ -48,17 +48,27 @@ export function AprovarSolicitacaoDialog({
   const contasQ = useQuery(contasSaldoQuery)
   const [contaOrigemId, setContaOrigemId] = React.useState<string>('')
   const [observacao, setObservacao] = React.useState<string>('')
+  const [usarCompensacao, setUsarCompensacao] = React.useState(false)
+  const [dataCompensacao, setDataCompensacao] = React.useState<string>('')
   const [submitError, setSubmitError] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     if (open && solicitacao) {
       setContaOrigemId(solicitacao.conta_origem_sugerida_id ?? '')
       setObservacao('')
+      setUsarCompensacao(false)
+      // Pre-fill data de compensação com hoje
+      const today = new Date()
+      setDataCompensacao(
+        `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`,
+      )
       setSubmitError(null)
     }
     if (!open) {
       setContaOrigemId('')
       setObservacao('')
+      setUsarCompensacao(false)
+      setDataCompensacao('')
       setSubmitError(null)
     }
   }, [open, solicitacao])
@@ -71,6 +81,9 @@ export function AprovarSolicitacaoDialog({
         id: solicitacao.id,
         conta_origem_id: contaOrigemId,
         observacao: observacao.trim() || null,
+        data_compensacao: usarCompensacao && dataCompensacao
+          ? dataCompensacao
+          : null,
       })
     },
     onSuccess: () => {
@@ -199,6 +212,36 @@ export function AprovarSolicitacaoDialog({
               onChange={(e) => setObservacao(e.target.value)}
               placeholder="Notas internas sobre a aprovação."
             />
+          </div>
+
+          <div className="space-y-2 rounded-md border border-dashed border-border bg-muted/20 p-3">
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-border accent-primary"
+                checked={usarCompensacao}
+                onChange={(e) => setUsarCompensacao(e.target.checked)}
+              />
+              Lançar com data de compensação (retroativa ou futura)
+            </label>
+            {usarCompensacao ? (
+              <div className="space-y-1.5 pl-6">
+                <Label htmlFor="aprovar_data_compensacao" className="text-xs">
+                  Data efetiva do lançamento gerado
+                </Label>
+                <input
+                  id="aprovar_data_compensacao"
+                  type="date"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  value={dataCompensacao}
+                  onChange={(e) => setDataCompensacao(e.target.value)}
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Sem compensação, o lançamento nasce com a data de HOJE.
+                  Use a data efetiva pra refletir a movimentação real.
+                </p>
+              </div>
+            ) : null}
           </div>
         </div>
 

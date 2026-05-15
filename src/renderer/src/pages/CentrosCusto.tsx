@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { useQuery } from '@tanstack/react-query'
 import {
   ArrowDownCircle,
   ArrowUpCircle,
@@ -12,67 +13,79 @@ import {
   CardHeader,
   CardTitle,
 } from '../components/ui/card'
-import { Input } from '../components/ui/input'
-import { Label } from '../components/ui/label'
 import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert'
 import { StatCard } from '../components/dashboards/StatCard'
 import { CentrosCustoChart } from '../components/dashboards/CentrosCustoChart'
 import { CentrosCustoPie } from '../components/dashboards/CentrosCustoPie'
 import { CentrosCustoTable } from '../components/dashboards/CentrosCustoTable'
-import { useCentrosCustoDashboard } from '../lib/dashboards-queries'
+import {
+  centrosCustoDashboardQuery,
+  centrosCustoIntervaloQuery,
+} from '../lib/dashboards-queries'
 import { currentPeriodoIso } from '../lib/queries'
-import { formatBRL, formatPeriodo } from '../lib/format'
+import {
+  PeriodoFilter,
+  defaultPeriodoValue,
+  formatPeriodoFilter,
+  periodoBounds,
+  type PeriodoFilterValue,
+} from '../components/filters/PeriodoFilter'
+import { formatBRL } from '../lib/format'
 import { mapError } from '../lib/error-mapper'
 
-function periodoToInputValue(iso: string): string {
-  return iso.slice(0, 7)
-}
-
-function inputValueToPeriodo(value: string): string {
-  if (!/^\d{4}-\d{2}$/.test(value)) return currentPeriodoIso()
-  return `${value}-01`
-}
-
 export default function CentrosCustoPage(): React.ReactElement {
-  const [periodo, setPeriodo] = React.useState<string>(() => currentPeriodoIso())
-  const dashQ = useCentrosCustoDashboard(periodo)
+  const [periodo, setPeriodo] = React.useState<PeriodoFilterValue>(() =>
+    defaultPeriodoValue(currentPeriodoIso()),
+  )
+
+  const isIntervalo = periodo.mode === 'intervalo'
+  const bounds = periodoBounds(periodo)
+  const rangeReady =
+    isIntervalo && bounds && periodo.dataInicio && periodo.dataFim
+      ? { dataInicio: bounds.start, dataFim: subtractDay(bounds.endExclusive) }
+      : null
+
+  const mesQ = useQuery({
+    ...centrosCustoDashboardQuery(periodo.mesIso),
+    enabled: !isIntervalo,
+  })
+  const intQ = useQuery({
+    ...centrosCustoIntervaloQuery(
+      rangeReady ?? { dataInicio: '', dataFim: '' },
+    ),
+    enabled: Boolean(rangeReady),
+  })
+
+  const data = (isIntervalo ? intQ.data : mesQ.data) ?? []
+  const isLoading = isIntervalo ? intQ.isLoading : mesQ.isLoading
+  const queryError = isIntervalo ? intQ.error : mesQ.error
 
   const totals = React.useMemo(() => {
-    const rows = dashQ.data ?? []
-    return rows.reduce(
+    return data.reduce(
       (acc, r) => {
-        acc.entradas += r.entradas ?? 0
-        acc.saidas += r.saidas ?? 0
-        acc.saldo += r.saldo_liquido ?? 0
-        acc.qtd += r.qtd_lancamentos ?? 0
+        acc.entradas += Number(r.entradas ?? 0)
+        acc.saidas += Number(r.saidas ?? 0)
+        acc.saldo += Number(r.saldo_liquido ?? 0)
+        acc.qtd += Number(r.qtd_lancamentos ?? 0)
         return acc
       },
       { entradas: 0, saidas: 0, saldo: 0, qtd: 0 },
     )
-  }, [dashQ.data])
+  }, [data])
 
-  const errorMsg = dashQ.error ? mapError(dashQ.error).description : null
-  const data = dashQ.data ?? []
-  const isEmpty = !dashQ.isLoading && data.length === 0
+  const errorMsg = queryError ? mapError(queryError).description : null
+  const isEmpty = !isLoading && data.length === 0
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Centros de Custo"
-        description={`Período selecionado: ${formatPeriodo(periodo)}`}
+        description={`Período selecionado: ${formatPeriodoFilter(periodo)}`}
       />
 
       <Card>
-        <CardContent className="grid gap-4 p-4 md:grid-cols-3">
-          <div className="space-y-2">
-            <Label htmlFor="periodo-cc">Período</Label>
-            <Input
-              id="periodo-cc"
-              type="month"
-              value={periodoToInputValue(periodo)}
-              onChange={(e) => setPeriodo(inputValueToPeriodo(e.target.value))}
-            />
-          </div>
+        <CardContent className="p-4">
+          <PeriodoFilter value={periodo} onChange={setPeriodo} />
         </CardContent>
       </Card>
 
@@ -89,27 +102,27 @@ export default function CentrosCustoPage(): React.ReactElement {
           value={formatBRL(totals.entradas)}
           icon={<ArrowUpCircle className="h-5 w-5" />}
           accent="success"
-          loading={dashQ.isLoading}
+          loading={isLoading}
         />
         <StatCard
           label="Total Saídas"
           value={formatBRL(totals.saidas)}
           icon={<ArrowDownCircle className="h-5 w-5" />}
           accent="destructive"
-          loading={dashQ.isLoading}
+          loading={isLoading}
         />
         <StatCard
           label="Saldo Líquido"
           value={formatBRL(totals.saldo)}
           icon={<Wallet className="h-5 w-5" />}
           accent={totals.saldo < 0 ? 'destructive' : 'success'}
-          loading={dashQ.isLoading}
+          loading={isLoading}
         />
         <StatCard
           label="Qtd Lançamentos"
           value={String(totals.qtd)}
           icon={<ListChecks className="h-5 w-5" />}
-          loading={dashQ.isLoading}
+          loading={isLoading}
         />
       </div>
 
@@ -143,7 +156,7 @@ export default function CentrosCustoPage(): React.ReactElement {
 
       <Card>
         <CardContent className="p-0">
-          <CentrosCustoTable data={data} loading={dashQ.isLoading} />
+          <CentrosCustoTable data={data} loading={isLoading} />
         </CardContent>
       </Card>
     </div>
@@ -156,4 +169,14 @@ function EmptyChart(): React.ReactElement {
       Nenhum lançamento neste período.
     </div>
   )
+}
+
+function subtractDay(iso: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso
+  const [y, m, d] = iso.split('-').map((s) => Number.parseInt(s, 10))
+  const prev = new Date(y!, m! - 1, (d ?? 1) - 1)
+  const yy = prev.getFullYear()
+  const mm = String(prev.getMonth() + 1).padStart(2, '0')
+  const dd = String(prev.getDate()).padStart(2, '0')
+  return `${yy}-${mm}-${dd}`
 }

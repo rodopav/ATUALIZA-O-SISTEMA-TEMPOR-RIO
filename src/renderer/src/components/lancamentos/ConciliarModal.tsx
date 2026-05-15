@@ -34,14 +34,20 @@ export function ConciliarModal({
   const profile = useAuthStore((s) => s.profile)
   const qc = useQueryClient()
   const [observacao, setObservacao] = React.useState('')
+  const [dataCompensacao, setDataCompensacao] = React.useState('')
+  const [usarCompensacao, setUsarCompensacao] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     if (!open) {
       setObservacao('')
+      setDataCompensacao('')
+      setUsarCompensacao(false)
       setError(null)
+    } else if (target?.data) {
+      setDataCompensacao(target.data)
     }
-  }, [open])
+  }, [open, target?.data])
 
   const mutation = useMutation({
     mutationFn: async (): Promise<void> => {
@@ -51,6 +57,9 @@ export function ConciliarModal({
         id: target.id,
         observacao: observacao.trim() || null,
         profileId: profile.id,
+        dataCompensacao: usarCompensacao && dataCompensacao
+          ? dataCompensacao
+          : null,
       })
     },
     onSuccess: () => {
@@ -127,6 +136,37 @@ export function ConciliarModal({
               value={observacao}
               onChange={(e) => setObservacao(e.target.value)}
             />
+          </div>
+
+          <div className="space-y-2 rounded-md border border-dashed border-border bg-muted/20 p-3">
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-border accent-primary"
+                checked={usarCompensacao}
+                onChange={(e) => setUsarCompensacao(e.target.checked)}
+              />
+              Lançar com data de compensação (retroativa ou futura)
+            </label>
+            {usarCompensacao ? (
+              <div className="space-y-1.5 pl-6">
+                <Label htmlFor="data_compensacao" className="text-xs">
+                  Data efetiva do lançamento
+                </Label>
+                <input
+                  id="data_compensacao"
+                  type="date"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  value={dataCompensacao}
+                  onChange={(e) => setDataCompensacao(e.target.value)}
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  A data do lançamento será REESCRITA pra essa, afetando saldos
+                  e conferência. Use quando a baixa bancária confirmar uma data
+                  diferente da registrada.
+                </p>
+              </div>
+            ) : null}
           </div>
         </div>
 

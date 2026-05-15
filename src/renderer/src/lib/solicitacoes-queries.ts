@@ -210,6 +210,12 @@ export interface AprovarSolicitacaoInput {
   conta_origem_id: string
   observacao?: string | null
   centro_custo_id?: string | null
+  /**
+   * Data de compensação (ISO YYYY-MM-DD). Quando preenchida, o lançamento
+   * gerado nasce com essa data ao invés de CURRENT_DATE. Útil pra registrar
+   * transferências retroativas ou futuras.
+   */
+  data_compensacao?: string | null
 }
 
 export async function aprovarSolicitacao(
@@ -220,10 +226,57 @@ export async function aprovarSolicitacao(
     p_conta_origem_id: input.conta_origem_id,
     p_observacao: input.observacao ?? undefined,
     p_centro_custo_id: input.centro_custo_id ?? undefined,
+    p_data_compensacao: input.data_compensacao ?? undefined,
   })
   if (error) throw error
   // RPC retorna o id do lançamento gerado.
   return String(data)
+}
+
+/**
+ * Edita uma solicitação enquanto status='PENDENTE'. Backend bloqueia se já
+ * resolvida (via trigger enforce_solicitacao_edit).
+ */
+export interface EditarSolicitacaoInput {
+  id: string
+  valor?: number
+  descricao?: string
+  conta_destino_id?: string
+  conta_origem_sugerida_id?: string | null
+  centro_custo_id?: string | null
+}
+
+export async function editarSolicitacao(
+  input: EditarSolicitacaoInput,
+): Promise<void> {
+  type SolicUpdate = {
+    valor?: number
+    descricao?: string
+    conta_destino_id?: string
+    conta_origem_sugerida_id?: string | null
+    centro_custo_id?: string | null
+  }
+  const updates: SolicUpdate = {}
+  if (input.valor !== undefined) updates.valor = input.valor
+  if (input.descricao !== undefined) updates.descricao = input.descricao
+  if (input.conta_destino_id !== undefined)
+    updates.conta_destino_id = input.conta_destino_id
+  if (input.conta_origem_sugerida_id !== undefined)
+    updates.conta_origem_sugerida_id = input.conta_origem_sugerida_id
+  if (input.centro_custo_id !== undefined)
+    updates.centro_custo_id = input.centro_custo_id
+  if (Object.keys(updates).length === 0) return
+  const { data, error } = await supabase
+    .from('solicitacoes_saldo')
+    .update(updates)
+    .eq('id', input.id)
+    .select('id, status')
+  if (error) throw error
+  if (!data || data.length === 0) {
+    throw new Error(
+      'Não foi possível editar esta solicitação. Verifique se ela ainda está PENDENTE.',
+    )
+  }
 }
 
 export interface RejeitarSolicitacaoInput {

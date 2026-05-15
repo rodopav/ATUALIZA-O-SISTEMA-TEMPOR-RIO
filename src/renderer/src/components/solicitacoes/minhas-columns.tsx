@@ -1,6 +1,6 @@
 import * as React from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
-import { Ban } from 'lucide-react'
+import { Ban, Pencil } from 'lucide-react'
 import { Button } from '../ui/button'
 import { Spinner } from '../ui/spinner'
 import { formatBRL, formatDate } from '../../lib/format'
@@ -9,6 +9,7 @@ import type { SolicitacaoSaldoRow } from '../../lib/solicitacoes-queries'
 
 export interface MinhasColumnsHandlers {
   onCancelar: (row: SolicitacaoSaldoRow) => void
+  onEditar: (row: SolicitacaoSaldoRow) => void
   cancelandoId: string | null
 }
 
@@ -71,19 +72,32 @@ export function buildMinhasColumns(
         }
         const cancelando = handlers.cancelandoId === row.id
         return (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => handlers.onCancelar(row)}
-            disabled={cancelando}
-          >
-            {cancelando ? <Spinner /> : <Ban className="h-4 w-4" />}
-            Cancelar
-          </Button>
+          <div className="flex items-center justify-end gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => handlers.onEditar(row)}
+              disabled={cancelando}
+              title="Editar (só enquanto pendente)"
+            >
+              <Pencil className="h-4 w-4" />
+              <span className="hidden md:inline">Editar</span>
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => handlers.onCancelar(row)}
+              disabled={cancelando}
+            >
+              {cancelando ? <Spinner /> : <Ban className="h-4 w-4" />}
+              <span className="hidden md:inline">Cancelar</span>
+            </Button>
+          </div>
         )
       },
-      size: 120,
+      size: 180,
     },
   ]
 }

@@ -8,6 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert'
 import { DataTable } from '../components/ui/data-table'
 import { toast } from '../components/ui/use-toast'
 import { NovaSolicitacaoDialog } from '../components/solicitacoes/NovaSolicitacaoDialog'
+import { EditarSolicitacaoDialog } from '../components/solicitacoes/EditarSolicitacaoDialog'
 import { StatusFilter } from '../components/solicitacoes/StatusFilter'
 import { buildMinhasColumns } from '../components/solicitacoes/minhas-columns'
 import {
@@ -24,6 +25,9 @@ export function SolicitacoesPage(): React.ReactElement {
   const qc = useQueryClient()
   const profile = useAuthStore((s) => s.profile)
   const [dialogOpen, setDialogOpen] = React.useState(false)
+  const [editarTarget, setEditarTarget] =
+    React.useState<SolicitacaoSaldoRow | null>(null)
+  const [editarOpen, setEditarOpen] = React.useState(false)
   const [statusFilter, setStatusFilter] =
     React.useState<SolicitacaoStatus | null>(null)
 
@@ -57,13 +61,22 @@ export function SolicitacoesPage(): React.ReactElement {
     [cancelarMut],
   )
 
+  const handleEditar = React.useCallback(
+    (row: SolicitacaoSaldoRow): void => {
+      setEditarTarget(row)
+      setEditarOpen(true)
+    },
+    [],
+  )
+
   const columns = React.useMemo(
     () =>
       buildMinhasColumns({
         onCancelar: handleCancelar,
+        onEditar: handleEditar,
         cancelandoId: cancelarMut.isPending ? cancelarMut.variables ?? null : null,
       }),
-    [handleCancelar, cancelarMut.isPending, cancelarMut.variables],
+    [handleCancelar, handleEditar, cancelarMut.isPending, cancelarMut.variables],
   )
 
   const data = minhasQ.data ?? []
@@ -119,6 +132,12 @@ export function SolicitacoesPage(): React.ReactElement {
       <NovaSolicitacaoDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
+      />
+
+      <EditarSolicitacaoDialog
+        open={editarOpen}
+        onOpenChange={setEditarOpen}
+        solicitacao={editarTarget}
       />
     </div>
   )

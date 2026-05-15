@@ -2,6 +2,14 @@ import { queryOptions, useQuery, type UseQueryResult } from '@tanstack/react-que
 import { supabase } from './supabase'
 import type { Tables, Enums } from '../../../shared/database.types'
 
+// RPCs novas ainda não estão no database.types.ts. Helper que evita erro
+// de TS no nome da função e tipa o retorno via cast no chamador.
+type RpcCaller = (
+  fn: string,
+  args: Record<string, unknown>,
+) => Promise<{ data: unknown; error: unknown }>
+const rpcUntyped = supabase.rpc as unknown as RpcCaller
+
 export type CentroCustoDashboardRow = Tables<'v_dashboard_centro_custo'>
 export type ConferenciaRow = Tables<'v_conferencia'>
 export type SaldoGeralRow = Tables<'v_saldo_geral'>
@@ -47,6 +55,13 @@ const AUDIT_SELECT = `
   usuario:profiles!usuario_id(nome_completo, email)
 `.trim()
 
+export interface DashboardRange {
+  /** YYYY-MM-DD inclusive. */
+  dataInicio: string
+  /** YYYY-MM-DD inclusive. */
+  dataFim: string
+}
+
 export const centrosCustoDashboardQuery = (periodo: string) =>
   queryOptions({
     queryKey: ['dashboards', 'centros_custo', periodo] as const,
@@ -58,6 +73,25 @@ export const centrosCustoDashboardQuery = (periodo: string) =>
         .order('codigo', { ascending: true })
       if (error) throw error
       return data ?? []
+    },
+    staleTime: STALE_30S,
+  })
+
+export const centrosCustoIntervaloQuery = (range: DashboardRange) =>
+  queryOptions({
+    queryKey: ['dashboards', 'centros_custo', 'intervalo', range] as const,
+    queryFn: async (): Promise<CentroCustoDashboardRow[]> => {
+      const { data, error } = await rpcUntyped(
+        'dashboard_centros_custo_intervalo',
+        { p_data_inicio: range.dataInicio, p_data_fim: range.dataFim },
+      )
+      if (error) throw error as Error
+      // Função RPC retorna o mesmo shape de v_dashboard_centro_custo (sem `periodo`).
+      // Adicionamos periodo=null pra coexistir no mesmo tipo.
+      return ((data ?? []) as unknown[]).map((r) => ({
+        ...(r as object),
+        periodo: null,
+      })) as unknown as CentroCustoDashboardRow[]
     },
     staleTime: STALE_30S,
   })
@@ -77,6 +111,22 @@ export const conferenciaQuery = (periodo: string) =>
     staleTime: STALE_30S,
   })
 
+export const conferenciaIntervaloQuery = (range: DashboardRange) =>
+  queryOptions({
+    queryKey: ['dashboards', 'conferencia', 'intervalo', range] as const,
+    queryFn: async (): Promise<ConferenciaRow | null> => {
+      const { data, error } = await rpcUntyped(
+        'dashboard_conferencia_intervalo',
+        { p_data_inicio: range.dataInicio, p_data_fim: range.dataFim },
+      )
+      if (error) throw error as Error
+      const rows = (data ?? []) as unknown[]
+      if (rows.length === 0) return null
+      return { ...(rows[0] as object), periodo: null } as unknown as ConferenciaRow
+    },
+    staleTime: STALE_30S,
+  })
+
 export const divergenciasQuery = (periodo: string) =>
   queryOptions({
     queryKey: ['dashboards', 'divergencias', periodo] as const,
@@ -89,6 +139,45 @@ export const divergenciasQuery = (periodo: string) =>
         .order('empresa', { ascending: true })
       if (error) throw error
       return data ?? []
+    },
+    staleTime: STALE_30S,
+  })
+
+export const saldoGeralIntervaloQuery = (
+  range: DashboardRange,
+  opts?: { contaIds?: string[]; empresaIds?: string[]; onlyDivergentes?: boolean },
+) =>
+  queryOptions({
+    queryKey: [
+      'dashboards',
+      'saldo_geral',
+      'intervalo',
+      range,
+      opts?.contaIds ?? null,
+      opts?.empresaIds ?? null,
+      opts?.onlyDivergentes ?? false,
+    ] as const,
+    queryFn: async (): Promise<SaldoGeralRow[]> => {
+      const { data, error } = await rpcUntyped(
+        'dashboard_saldo_geral_intervalo',
+        {
+          p_data_inicio: range.dataInicio,
+          p_data_fim: range.dataFim,
+          p_conta_ids: opts?.contaIds && opts.contaIds.length > 0
+            ? opts.contaIds
+            : null,
+          p_empresa_ids:
+            opts?.empresaIds && opts.empresaIds.length > 0
+              ? opts.empresaIds
+              : null,
+        },
+      )
+      if (error) throw error as Error
+      let rows = (data ?? []) as unknown as SaldoGeralRow[]
+      if (opts?.onlyDivergentes) {
+        rows = rows.filter((r) => r.status === 'DIVERGENTE')
+      }
+      return rows
     },
     staleTime: STALE_30S,
   })

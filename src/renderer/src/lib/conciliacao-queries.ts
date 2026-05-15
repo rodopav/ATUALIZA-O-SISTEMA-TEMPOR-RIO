@@ -111,21 +111,39 @@ export interface ConciliarInput {
   id: string
   observacao: string | null
   profileId: string
+  /**
+   * Data de compensação (opcional, ISO YYYY-MM-DD).
+   * Quando preenchida, o campo `data` do lançamento é REESCRITO pra essa data
+   * — ou seja, a movimentação passa a contar pro saldo/conferência como se
+   * tivesse acontecido nessa data. Útil quando a baixa bancária confirmou
+   * uma transação retroativa (compensação D+2 etc.) ou futura.
+   */
+  dataCompensacao?: string | null
 }
 
 export async function conciliarLancamento(input: ConciliarInput): Promise<void> {
+  type LancUpdate = {
+    conciliado_em?: string | null
+    conciliado_por?: string | null
+    conciliacao_observacao?: string | null
+    data?: string
+  }
+  const updates: LancUpdate = {
+    conciliado_em: new Date().toISOString(),
+    conciliado_por: input.profileId,
+    conciliacao_observacao: input.observacao?.trim() || null,
+  }
+  if (input.dataCompensacao) {
+    updates.data = input.dataCompensacao
+  }
   // `.select()` força o Supabase a retornar as linhas afetadas. Sem isso,
   // se a RLS bloqueia silenciosamente (0 rows updated, sem erro), a
   // mutation julgava sucesso e o toast mentia. Agora a gente detecta.
   const { data, error } = await supabase
     .from('lancamentos')
-    .update({
-      conciliado_em: new Date().toISOString(),
-      conciliado_por: input.profileId,
-      conciliacao_observacao: input.observacao?.trim() || null,
-    })
+    .update(updates)
     .eq('id', input.id)
-    .select('id, conciliado_em')
+    .select('id, conciliado_em, data')
   if (error) throw error
   if (!data || data.length === 0) {
     throw new Error(

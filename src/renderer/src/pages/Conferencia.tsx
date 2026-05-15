@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import {
   AlertTriangle,
@@ -17,61 +18,92 @@ import {
   CardHeader,
   CardTitle,
 } from '../components/ui/card'
-import { Input } from '../components/ui/input'
-import { Label } from '../components/ui/label'
 import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert'
 import { StatCard } from '../components/dashboards/StatCard'
 import { DivergenciasTable } from '../components/dashboards/DivergenciasTable'
-import { useConferencia, useDivergencias } from '../lib/dashboards-queries'
+import {
+  conferenciaQuery,
+  conferenciaIntervaloQuery,
+  divergenciasQuery,
+  saldoGeralIntervaloQuery,
+} from '../lib/dashboards-queries'
 import { currentPeriodoIso } from '../lib/queries'
-import { formatBRL, formatPeriodo } from '../lib/format'
+import {
+  PeriodoFilter,
+  defaultPeriodoValue,
+  formatPeriodoFilter,
+  periodoBounds,
+  type PeriodoFilterValue,
+} from '../components/filters/PeriodoFilter'
+import { formatBRL } from '../lib/format'
 import { mapError } from '../lib/error-mapper'
 
-function periodoToInputValue(iso: string): string {
-  return iso.slice(0, 7)
-}
-
-function inputValueToPeriodo(value: string): string {
-  if (!/^\d{4}-\d{2}$/.test(value)) return currentPeriodoIso()
-  return `${value}-01`
-}
-
 export default function ConferenciaPage(): React.ReactElement {
-  const [periodo, setPeriodo] = React.useState<string>(() => currentPeriodoIso())
-  const conferenciaQ = useConferencia(periodo)
-  const status = conferenciaQ.data?.status ?? null
+  const [periodo, setPeriodo] = React.useState<PeriodoFilterValue>(() =>
+    defaultPeriodoValue(currentPeriodoIso()),
+  )
+
+  // Quando intervalo: usa RPCs por intervalo. Quando mês: views agregadas.
+  const isIntervalo = periodo.mode === 'intervalo'
+  const bounds = periodoBounds(periodo)
+  const rangeReady =
+    isIntervalo && bounds && periodo.dataInicio && periodo.dataFim
+      ? { dataInicio: bounds.start, dataFim: subtractDay(bounds.endExclusive) }
+      : null
+
+  const conferenciaMesQ = useQuery({
+    ...conferenciaQuery(periodo.mesIso),
+    enabled: !isIntervalo,
+  })
+  const conferenciaIntQ = useQuery({
+    ...conferenciaIntervaloQuery(rangeReady ?? { dataInicio: '', dataFim: '' }),
+    enabled: Boolean(rangeReady),
+  })
+
+  const data = isIntervalo ? conferenciaIntQ.data : conferenciaMesQ.data
+  const isLoading = isIntervalo
+    ? conferenciaIntQ.isLoading
+    : conferenciaMesQ.isLoading
+  const queryError = isIntervalo ? conferenciaIntQ.error : conferenciaMesQ.error
+
+  const status = data?.status ?? null
   const isDivergente = status === 'DIVERGENTE'
 
-  const divergQ = useDivergencias(periodo)
+  // Divergências detalhadas
+  const divergMesQ = useQuery({
+    ...divergenciasQuery(periodo.mesIso),
+    enabled: !isIntervalo && isDivergente,
+  })
+  const divergIntQ = useQuery({
+    ...saldoGeralIntervaloQuery(
+      rangeReady ?? { dataInicio: '', dataFim: '' },
+      { onlyDivergentes: true },
+    ),
+    enabled: Boolean(rangeReady) && isDivergente,
+  })
+  const divergRows = isIntervalo ? divergIntQ.data ?? [] : divergMesQ.data ?? []
+  const divergLoading = isIntervalo ? divergIntQ.isLoading : divergMesQ.isLoading
 
   const errorMsg = React.useMemo(() => {
-    if (conferenciaQ.error) return mapError(conferenciaQ.error).description
-    if (divergQ.error) return mapError(divergQ.error).description
+    if (queryError) return mapError(queryError).description
     return null
-  }, [conferenciaQ.error, divergQ.error])
+  }, [queryError])
 
-  const data = conferenciaQ.data
-  const contasDivergentes = data?.contas_divergentes ?? 0
-  const saldoGeralLink = `/dashboard/saldo-geral?status=DIVERGENTE&periodo=${periodo}`
+  const contasDivergentes = Number(data?.contas_divergentes ?? 0)
+  const saldoGeralLink = isIntervalo
+    ? `/dashboard/saldo-geral?status=DIVERGENTE&dataInicio=${periodo.dataInicio}&dataFim=${periodo.dataFim}`
+    : `/dashboard/saldo-geral?status=DIVERGENTE&periodo=${periodo.mesIso}`
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Conferência"
-        description={`Período selecionado: ${formatPeriodo(periodo)}`}
+        description={`Período selecionado: ${formatPeriodoFilter(periodo)}`}
       />
 
       <Card>
-        <CardContent className="grid gap-4 p-4 md:grid-cols-3">
-          <div className="space-y-2">
-            <Label htmlFor="periodo-conf">Período</Label>
-            <Input
-              id="periodo-conf"
-              type="month"
-              value={periodoToInputValue(periodo)}
-              onChange={(e) => setPeriodo(inputValueToPeriodo(e.target.value))}
-            />
-          </div>
+        <CardContent className="p-4">
+          <PeriodoFilter value={periodo} onChange={setPeriodo} />
         </CardContent>
       </Card>
 
@@ -86,47 +118,47 @@ export default function ConferenciaPage(): React.ReactElement {
         <div className="min-w-[12rem] sm:min-w-0">
           <StatCard
             label="Saldo Inicial"
-            value={formatBRL(data?.total_saldo_inicial ?? 0)}
+            value={formatBRL(Number(data?.total_saldo_inicial ?? 0))}
             icon={<Wallet className="h-5 w-5" />}
-            loading={conferenciaQ.isLoading}
+            loading={isLoading}
           />
         </div>
         <div className="min-w-[12rem] sm:min-w-0">
           <StatCard
             label="Entradas"
-            value={formatBRL(data?.total_entradas ?? 0)}
+            value={formatBRL(Number(data?.total_entradas ?? 0))}
             icon={<ArrowUpCircle className="h-5 w-5" />}
             accent="success"
-            loading={conferenciaQ.isLoading}
+            loading={isLoading}
             description="Apenas operacionais."
           />
         </div>
         <div className="min-w-[12rem] sm:min-w-0">
           <StatCard
             label="Saídas"
-            value={formatBRL(data?.total_saidas ?? 0)}
+            value={formatBRL(Number(data?.total_saidas ?? 0))}
             icon={<ArrowDownCircle className="h-5 w-5" />}
             accent="destructive"
-            loading={conferenciaQ.isLoading}
+            loading={isLoading}
             description="Apenas operacionais."
           />
         </div>
         <div className="min-w-[12rem] sm:min-w-0">
           <StatCard
             label="Saldo Atual"
-            value={formatBRL(data?.total_saldo_atual ?? 0)}
+            value={formatBRL(Number(data?.total_saldo_atual ?? 0))}
             icon={<Wallet className="h-5 w-5" />}
             accent="info"
-            loading={conferenciaQ.isLoading}
+            loading={isLoading}
           />
         </div>
         <div className="min-w-[12rem] sm:min-w-0">
           <StatCard
             label="Saldo Calculado"
-            value={formatBRL(data?.saldo_calculado ?? 0)}
+            value={formatBRL(Number(data?.saldo_calculado ?? 0))}
             icon={<Calculator className="h-5 w-5" />}
             accent="info"
-            loading={conferenciaQ.isLoading}
+            loading={isLoading}
           />
         </div>
       </div>
@@ -134,23 +166,23 @@ export default function ConferenciaPage(): React.ReactElement {
       <div className="grid gap-4 sm:grid-cols-2">
         <StatCard
           label="Transferências internas (entrada)"
-          value={formatBRL(data?.total_transferencias_recebidas ?? 0)}
+          value={formatBRL(Number(data?.total_transferencias_recebidas ?? 0))}
           icon={<ArrowRightLeft className="h-5 w-5" />}
           accent="info"
-          loading={conferenciaQ.isLoading}
+          loading={isLoading}
           description="Movem saldo entre contas próprias, não contam como fluxo operacional."
         />
         <StatCard
           label="Transferências internas (saída)"
-          value={formatBRL(data?.total_transferencias_enviadas ?? 0)}
+          value={formatBRL(Number(data?.total_transferencias_enviadas ?? 0))}
           icon={<ArrowRightLeft className="h-5 w-5" />}
           accent="info"
-          loading={conferenciaQ.isLoading}
+          loading={isLoading}
           description="Movem saldo entre contas próprias, não contam como fluxo operacional."
         />
       </div>
 
-      {!conferenciaQ.isLoading && status ? (
+      {!isLoading && status ? (
         isDivergente ? (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
@@ -189,13 +221,20 @@ export default function ConferenciaPage(): React.ReactElement {
             <CardTitle className="text-base">Contas divergentes</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <DivergenciasTable
-              data={divergQ.data ?? []}
-              loading={divergQ.isLoading}
-            />
+            <DivergenciasTable data={divergRows} loading={divergLoading} />
           </CardContent>
         </Card>
       ) : null}
     </div>
   )
+}
+
+function subtractDay(iso: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso
+  const [y, m, d] = iso.split('-').map((s) => Number.parseInt(s, 10))
+  const prev = new Date(y!, m! - 1, (d ?? 1) - 1)
+  const yy = prev.getFullYear()
+  const mm = String(prev.getMonth() + 1).padStart(2, '0')
+  const dd = String(prev.getDate()).padStart(2, '0')
+  return `${yy}-${mm}-${dd}`
 }
