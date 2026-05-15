@@ -37,7 +37,20 @@ export interface LancamentoRow {
   fornecedor: { nome: string } | null
   responsavel: { nome_completo: string } | null
   conciliador: { nome_completo: string } | null
-  estorno: { id: string } | null
+  /**
+   * Reverse FK lookup — PostgREST retorna ARRAY (one-to-many) com os
+   * lançamentos que tem `estorno_de_id = this.id`. Vazio quando não há.
+   * Use `hasEstorno(row)` pra checagem segura — `Boolean(row.estorno)`
+   * dá true em array vazio.
+   */
+  estorno: { id: string }[] | null
+}
+
+/** True se este lançamento já foi estornado (tem ao menos um filho via estorno_de_id). */
+export function hasEstorno(row: Pick<LancamentoRow, 'estorno'>): boolean {
+  if (!row.estorno) return false
+  if (Array.isArray(row.estorno)) return row.estorno.length > 0
+  return true
 }
 
 /**

@@ -16,7 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu'
-import type { LancamentoRow } from '../../lib/lancamentos-queries'
+import { hasEstorno, type LancamentoRow } from '../../lib/lancamentos-queries'
 
 export interface LancamentoActionHandlers {
   onEdit: (row: LancamentoRow) => void
@@ -37,7 +37,7 @@ export function LancamentoRowActions({
   handlers,
 }: LancamentoRowActionsProps): React.ReactElement {
   const isEstorno = Boolean(row.estorno_de_id)
-  const isEstornado = Boolean(row.estorno)
+  const isEstornado = hasEstorno(row)
   const isConciliado = Boolean(row.conciliado_em)
   // Conciliar/Desfazer: qualquer usuário com permissão nas contas pode
   // (RLS no banco que controla). Só esconde se não passou handler.

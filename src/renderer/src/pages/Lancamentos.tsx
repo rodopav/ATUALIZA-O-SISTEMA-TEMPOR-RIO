@@ -17,6 +17,7 @@ import { EstornoModal } from '../components/lancamentos/EstornoModal'
 import { ConciliarModal } from '../components/lancamentos/ConciliarModal'
 import {
   lancamentosListQuery,
+  hasEstorno,
   type LancamentoRow,
 } from '../lib/lancamentos-queries'
 import { centrosCustoQuery } from '../lib/queries'
@@ -312,7 +313,7 @@ export function LancamentosPage(): React.ReactElement {
             rowClassName={(row) =>
               cn(
                 row.estorno_de_id && 'bg-warning/[0.04]',
-                row.estorno && 'opacity-70',
+                hasEstorno(row) && 'opacity-70',
               )
             }
           />
