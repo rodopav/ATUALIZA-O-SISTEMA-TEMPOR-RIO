@@ -79,6 +79,11 @@ export function DataTable<TData>({
   }
 
   const rows = table.getRowModel().rows
+  // Virtualização só faz sentido quando NÃO há paginação. Com paginação
+  // ativa a página atual já é pequena (≤20 linhas), e virtualizer com
+  // altura dinâmica num tbody dentro de uma tabela com pagination
+  // resultava em 0 items renderizados (a tabela ficava em branco).
+  const shouldVirtualize = Boolean(virtualize && hidePagination)
 
   return (
     <div className="flex flex-col">
@@ -126,7 +131,7 @@ export function DataTable<TData>({
               </tr>
             ))}
           </thead>
-          {virtualize ? (
+          {shouldVirtualize ? (
             <VirtualBody
               rows={rows}
               colSpan={columns.length}
