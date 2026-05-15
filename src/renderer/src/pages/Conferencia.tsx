@@ -10,8 +10,10 @@ import {
   Calculator,
   Wallet,
   ArrowRightLeft,
+  XCircle,
 } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
+import { Button } from '../components/ui/button'
 import {
   Card,
   CardContent,
@@ -37,10 +39,23 @@ import {
 } from '../components/filters/PeriodoFilter'
 import { formatBRL } from '../lib/format'
 import { mapError } from '../lib/error-mapper'
+import { usePageFilters } from '../lib/filters-store'
+
+interface ConferenciaFilters {
+  periodo: PeriodoFilterValue
+}
+
+const defaultConferenciaFilters: ConferenciaFilters = {
+  periodo: defaultPeriodoValue(currentPeriodoIso()),
+}
 
 export default function ConferenciaPage(): React.ReactElement {
-  const [periodo, setPeriodo] = React.useState<PeriodoFilterValue>(() =>
-    defaultPeriodoValue(currentPeriodoIso()),
+  const f = usePageFilters('conferencia', defaultConferenciaFilters)
+  const { periodo } = f.value
+
+  const setPeriodo = React.useCallback(
+    (next: PeriodoFilterValue) => f.set({ periodo: next }),
+    [f],
   )
 
   // Quando intervalo: usa RPCs por intervalo. Quando mês: views agregadas.
@@ -102,8 +117,14 @@ export default function ConferenciaPage(): React.ReactElement {
       />
 
       <Card>
-        <CardContent className="p-4">
+        <CardContent className="space-y-3 p-4">
           <PeriodoFilter value={periodo} onChange={setPeriodo} />
+          <div className="flex justify-end">
+            <Button type="button" variant="ghost" size="sm" onClick={f.reset}>
+              <XCircle className="h-3.5 w-3.5" />
+              Limpar filtros
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

@@ -44,6 +44,7 @@ const schema = z.object({
     .min(5, 'Descrição deve ter ao menos 5 caracteres.'),
   conta_origem_sugerida_id: z.string().uuid().nullable(),
   centro_custo_id: z.string().uuid().nullable(),
+  data_compensacao_sugerida: z.string(),
 }) satisfies z.ZodType<NovaSolicitacaoFormValues>
 
 interface EditarSolicitacaoDialogProps {
@@ -70,6 +71,7 @@ export function EditarSolicitacaoDialog({
       descricao: '',
       conta_origem_sugerida_id: null,
       centro_custo_id: null,
+      data_compensacao_sugerida: '',
     },
   })
 
@@ -100,6 +102,7 @@ export function EditarSolicitacaoDialog({
         descricao: solicitacao.descricao,
         conta_origem_sugerida_id: solicitacao.conta_origem_sugerida_id,
         centro_custo_id: solicitacao.centro_custo_id,
+        data_compensacao_sugerida: solicitacao.data_compensacao_sugerida ?? '',
       })
       setSubmitError(null)
     }
@@ -118,6 +121,7 @@ export function EditarSolicitacaoDialog({
         descricao: values.descricao,
         conta_origem_sugerida_id: values.conta_origem_sugerida_id,
         centro_custo_id: values.centro_custo_id,
+        data_compensacao_sugerida: values.data_compensacao_sugerida || null,
       })
     },
     onSuccess: () => {

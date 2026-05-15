@@ -43,6 +43,7 @@ const schema = z.object({
     .min(5, 'Descrição deve ter ao menos 5 caracteres.'),
   conta_origem_sugerida_id: z.string().uuid().nullable(),
   centro_custo_id: z.string().uuid().nullable(),
+  data_compensacao_sugerida: z.string(),
 }) satisfies z.ZodType<NovaSolicitacaoFormValues>
 
 interface NovaSolicitacaoDialogProps {
@@ -56,6 +57,7 @@ const DEFAULTS: NovaSolicitacaoFormValues = {
   descricao: '',
   conta_origem_sugerida_id: null,
   centro_custo_id: null,
+  data_compensacao_sugerida: '',
 }
 
 export function NovaSolicitacaoDialog({
@@ -112,6 +114,7 @@ export function NovaSolicitacaoDialog({
         valor: values.valor,
         descricao: values.descricao,
         centro_custo_id: values.centro_custo_id,
+        data_compensacao_sugerida: values.data_compensacao_sugerida || null,
       })
     },
     onSuccess: () => {

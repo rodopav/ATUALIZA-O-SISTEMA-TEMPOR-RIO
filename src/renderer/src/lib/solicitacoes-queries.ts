@@ -24,6 +24,7 @@ export interface SolicitacaoSaldoRow {
   conta_origem_efetiva_id: string | null
   lancamento_gerado_id: string | null
   observacao_aprovacao: string | null
+  data_compensacao_sugerida: string | null
   created_at: string
   updated_at: string
   conta_destino: { apelido: string } | null
@@ -50,7 +51,7 @@ const SELECT_BASE = `
   id, solicitante_id, conta_destino_id, conta_origem_sugerida_id, valor,
   descricao, centro_custo_id, status, resolvida_em, resolvida_por,
   motivo_rejeicao, conta_origem_efetiva_id, lancamento_gerado_id,
-  observacao_aprovacao, created_at, updated_at,
+  observacao_aprovacao, data_compensacao_sugerida, created_at, updated_at,
   conta_destino:contas_bancarias!conta_destino_id(apelido),
   origem_sugerida:contas_bancarias!conta_origem_sugerida_id(apelido),
   origem_efetiva:contas_bancarias!conta_origem_efetiva_id(apelido),
@@ -176,21 +177,37 @@ export interface CriarSolicitacaoInput {
   valor: number
   descricao: string
   centro_custo_id: string | null
+  /** Data efetiva sugerida (YYYY-MM-DD) — opcional. */
+  data_compensacao_sugerida?: string | null
 }
 
 export async function criarSolicitacao(
   input: CriarSolicitacaoInput,
 ): Promise<string> {
+  type SolicInsert = {
+    solicitante_id: string
+    conta_destino_id: string
+    conta_origem_sugerida_id: string | null
+    valor: number
+    descricao: string
+    centro_custo_id: string | null
+    data_compensacao_sugerida?: string | null
+  }
+  const payload: SolicInsert = {
+    solicitante_id: input.solicitante_id,
+    conta_destino_id: input.conta_destino_id,
+    conta_origem_sugerida_id: input.conta_origem_sugerida_id,
+    valor: input.valor,
+    descricao: input.descricao.trim(),
+    centro_custo_id: input.centro_custo_id,
+  }
+  if (input.data_compensacao_sugerida) {
+    payload.data_compensacao_sugerida = input.data_compensacao_sugerida
+  }
   const { data, error } = await supabase
     .from('solicitacoes_saldo')
-    .insert({
-      solicitante_id: input.solicitante_id,
-      conta_destino_id: input.conta_destino_id,
-      conta_origem_sugerida_id: input.conta_origem_sugerida_id,
-      valor: input.valor,
-      descricao: input.descricao.trim(),
-      centro_custo_id: input.centro_custo_id,
-    })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .insert(payload as any)
     .select('id')
     .single()
   if (error) throw error
@@ -244,6 +261,8 @@ export interface EditarSolicitacaoInput {
   conta_destino_id?: string
   conta_origem_sugerida_id?: string | null
   centro_custo_id?: string | null
+  /** Data efetiva sugerida (YYYY-MM-DD) — pode ser '' pra apagar. */
+  data_compensacao_sugerida?: string | null
 }
 
 export async function editarSolicitacao(
@@ -255,6 +274,7 @@ export async function editarSolicitacao(
     conta_destino_id?: string
     conta_origem_sugerida_id?: string | null
     centro_custo_id?: string | null
+    data_compensacao_sugerida?: string | null
   }
   const updates: SolicUpdate = {}
   if (input.valor !== undefined) updates.valor = input.valor
@@ -265,10 +285,14 @@ export async function editarSolicitacao(
     updates.conta_origem_sugerida_id = input.conta_origem_sugerida_id
   if (input.centro_custo_id !== undefined)
     updates.centro_custo_id = input.centro_custo_id
+  if (input.data_compensacao_sugerida !== undefined)
+    updates.data_compensacao_sugerida =
+      input.data_compensacao_sugerida || null
   if (Object.keys(updates).length === 0) return
   const { data, error } = await supabase
     .from('solicitacoes_saldo')
-    .update(updates)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .update(updates as any)
     .eq('id', input.id)
     .select('id, status')
   if (error) throw error

@@ -23,6 +23,8 @@ export interface NovaSolicitacaoFormValues {
   descricao: string
   conta_origem_sugerida_id: string | null
   centro_custo_id: string | null
+  /** Data efetiva sugerida (retroativa ou futura). Vazio = sem sugestão. */
+  data_compensacao_sugerida: string
 }
 
 interface NovaSolicitacaoFieldsProps {
@@ -197,6 +199,22 @@ export function NovaSolicitacaoFields({
             </Select>
           )}
         />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="solicitacao_data_sugerida">
+          Data efetiva sugerida (opcional)
+        </Label>
+        <input
+          id="solicitacao_data_sugerida"
+          type="date"
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          {...register('data_compensacao_sugerida')}
+        />
+        <p className="text-xs text-muted-foreground">
+          Se a operação precisa contar pra uma data diferente (retroativa ou
+          futura), sugira aqui. O admin pode aceitar ou ajustar na aprovação.
+        </p>
       </div>
     </>
   )

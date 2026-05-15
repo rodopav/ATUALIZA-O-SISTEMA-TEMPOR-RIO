@@ -35,6 +35,10 @@ import { useAuthStore } from '../lib/auth-store'
 import { desfazerConciliacao } from '../lib/conciliacao-queries'
 import { toast } from '../components/ui/use-toast'
 import { SaldoStickyBar } from '../components/lancamentos/SaldoStickyBar'
+import { usePageFilters } from '../lib/filters-store'
+
+// Snapshot estável dos defaults — não muda entre renders.
+const LANC_FILTERS_DEFAULT: LancamentosFiltersState = defaultFilters()
 
 function useDebounced<T>(value: T, delay: number): T {
   const [debounced, setDebounced] = React.useState(value)
@@ -49,8 +53,17 @@ export function LancamentosPage(): React.ReactElement {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const isAdmin = useAuthStore((s) => s.isAdmin)
-  const [filters, setFilters] = React.useState<LancamentosFiltersState>(
-    defaultFilters,
+  const filtersStore = usePageFilters('lancamentos', LANC_FILTERS_DEFAULT)
+  const filters = filtersStore.value
+  const setFilters = React.useCallback(
+    (next: LancamentosFiltersState | ((prev: LancamentosFiltersState) => LancamentosFiltersState)) => {
+      if (typeof next === 'function') {
+        filtersStore.replace(next(filtersStore.value))
+      } else {
+        filtersStore.replace(next)
+      }
+    },
+    [filtersStore],
   )
   const [estornoTarget, setEstornoTarget] = React.useState<LancamentoRow | null>(
     null,

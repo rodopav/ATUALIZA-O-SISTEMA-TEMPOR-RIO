@@ -4,8 +4,10 @@ import {
   CheckCircle2,
   AlertCircle,
   TrendingUp,
+  XCircle,
 } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
+import { Button } from '../components/ui/button'
 import { Card, CardContent } from '../components/ui/card'
 import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert'
 import { StatCard } from '../components/dashboards/StatCard'
@@ -27,12 +29,31 @@ import {
 } from '../components/filters/PeriodoFilter'
 import { ContaFilter } from '../components/filters/ContaFilter'
 import { mapError } from '../lib/error-mapper'
+import { usePageFilters } from '../lib/filters-store'
+
+interface ConciliacaoFilters {
+  periodo: PeriodoFilterValue
+  contaId: string | null
+}
+
+const defaultConciliacaoFilters: ConciliacaoFilters = {
+  periodo: defaultPeriodoValue(currentPeriodoIso()),
+  contaId: null,
+}
 
 export function ConciliacaoPage(): React.ReactElement {
-  const [periodo, setPeriodo] = React.useState<PeriodoFilterValue>(() =>
-    defaultPeriodoValue(currentPeriodoIso()),
+  const f = usePageFilters('conciliacao', defaultConciliacaoFilters)
+  const { periodo, contaId } = f.value
+
+  const setPeriodo = React.useCallback(
+    (next: PeriodoFilterValue) => f.set({ periodo: next }),
+    [f],
   )
-  const [contaId, setContaId] = React.useState<string | null>(null)
+  const setContaId = React.useCallback(
+    (next: string | null) => f.set({ contaId: next }),
+    [f],
+  )
+
   const [target, setTarget] = React.useState<PendenteConciliacaoRow | null>(
     null,
   )
@@ -82,9 +103,17 @@ export function ConciliacaoPage(): React.ReactElement {
       />
 
       <Card>
-        <CardContent className="grid gap-4 p-4 md:grid-cols-2">
-          <PeriodoFilter value={periodo} onChange={setPeriodo} />
-          <ContaFilter value={contaId} onChange={setContaId} />
+        <CardContent className="space-y-3 p-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <PeriodoFilter value={periodo} onChange={setPeriodo} />
+            <ContaFilter value={contaId} onChange={setContaId} />
+          </div>
+          <div className="flex justify-end">
+            <Button type="button" variant="ghost" size="sm" onClick={f.reset}>
+              <XCircle className="h-3.5 w-3.5" />
+              Limpar filtros
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

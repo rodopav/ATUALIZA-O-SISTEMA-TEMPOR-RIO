@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
-import { AlertTriangle, Filter, Download } from 'lucide-react'
+import { AlertTriangle, Filter, Download, XCircle } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
 import { Card, CardContent } from '../components/ui/card'
 import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert'
@@ -25,22 +25,57 @@ import { ContaFilter } from '../components/filters/ContaFilter'
 import { mapError } from '../lib/error-mapper'
 import { cn } from '../lib/cn'
 import { downloadCsv, brlNumber, type CsvColumn } from '../lib/csv-export'
+import { usePageFilters } from '../lib/filters-store'
 import type { Tables } from '../../../shared/database.types'
 
 type SaldoRow = Tables<'v_saldo_geral'>
 
+interface SaldoGeralFilters {
+  periodo: PeriodoFilterValue
+  empresaIds: string[]
+  contaId: string | null
+  onlyDivergentes: boolean
+}
+
+const defaultSaldoGeralFilters: SaldoGeralFilters = {
+  periodo: defaultPeriodoValue(currentPeriodoIso()),
+  empresaIds: [],
+  contaId: null,
+  onlyDivergentes: false,
+}
+
 export function SaldoGeralPage(): React.ReactElement {
   const [searchParams, setSearchParams] = useSearchParams()
-  const initialDivergentes = searchParams.get('status') === 'DIVERGENTE'
+  const f = usePageFilters('saldo_geral', defaultSaldoGeralFilters)
+  const { periodo, empresaIds, contaId, onlyDivergentes } = f.value
 
-  const [periodo, setPeriodo] = React.useState<PeriodoFilterValue>(() =>
-    defaultPeriodoValue(currentPeriodoIso()),
+  const setPeriodo = React.useCallback(
+    (next: PeriodoFilterValue) => f.set({ periodo: next }),
+    [f],
   )
-  const [empresaIds, setEmpresaIds] = React.useState<string[]>([])
-  const [contaId, setContaId] = React.useState<string | null>(null)
-  const [onlyDivergentes, setOnlyDivergentes] = React.useState<boolean>(
-    initialDivergentes,
+  const setEmpresaIds = React.useCallback(
+    (next: string[]) => f.set({ empresaIds: next }),
+    [f],
   )
+  const setContaId = React.useCallback(
+    (next: string | null) => f.set({ contaId: next }),
+    [f],
+  )
+  const setOnlyDivergentes = React.useCallback(
+    (next: boolean) => f.set({ onlyDivergentes: next }),
+    [f],
+  )
+
+  // Search param "?status=DIVERGENTE" (vindo da Conferência) força o filtro
+  // na primeira montagem — não toda atualização, pra respeitar a escolha do usuário.
+  const appliedInitialDivergentes = React.useRef(false)
+  React.useEffect(() => {
+    if (appliedInitialDivergentes.current) return
+    appliedInitialDivergentes.current = true
+    if (searchParams.get('status') === 'DIVERGENTE' && !onlyDivergentes) {
+      setOnlyDivergentes(true)
+    }
+  }, [searchParams, onlyDivergentes, setOnlyDivergentes])
 
   React.useEffect(() => {
     setSearchParams(
@@ -142,32 +177,40 @@ export function SaldoGeralPage(): React.ReactElement {
       />
 
       <Card>
-        <CardContent className="grid gap-5 p-5 lg:grid-cols-[1fr_1fr_1fr_auto] lg:items-end">
-          <PeriodoFilter value={periodo} onChange={setPeriodo} />
-          <ContaFilter value={contaId} onChange={setContaId} />
-          <EmpresaMultiSelect
-            empresas={empresasQ.data ?? []}
-            value={empresaIds}
-            onChange={setEmpresaIds}
-            loading={empresasQ.isLoading}
-          />
-          <Button
-            id="divergentes-toggle"
-            type="button"
-            variant={onlyDivergentes ? 'destructive' : 'outline'}
-            className={cn(
-              'h-10 justify-center',
-              onlyDivergentes && 'shadow-sm',
-            )}
-            onClick={() => setOnlyDivergentes((v) => !v)}
-          >
-            {onlyDivergentes ? (
-              <AlertTriangle className="h-4 w-4" />
-            ) : (
-              <Filter className="h-4 w-4" />
-            )}
-            {onlyDivergentes ? 'Apenas divergentes' : 'Mostrar divergentes'}
-          </Button>
+        <CardContent className="space-y-3 p-5">
+          <div className="grid gap-5 lg:grid-cols-[1fr_1fr_1fr_auto] lg:items-end">
+            <PeriodoFilter value={periodo} onChange={setPeriodo} />
+            <ContaFilter value={contaId} onChange={setContaId} />
+            <EmpresaMultiSelect
+              empresas={empresasQ.data ?? []}
+              value={empresaIds}
+              onChange={setEmpresaIds}
+              loading={empresasQ.isLoading}
+            />
+            <Button
+              id="divergentes-toggle"
+              type="button"
+              variant={onlyDivergentes ? 'destructive' : 'outline'}
+              className={cn(
+                'h-10 justify-center',
+                onlyDivergentes && 'shadow-sm',
+              )}
+              onClick={() => setOnlyDivergentes(!onlyDivergentes)}
+            >
+              {onlyDivergentes ? (
+                <AlertTriangle className="h-4 w-4" />
+              ) : (
+                <Filter className="h-4 w-4" />
+              )}
+              {onlyDivergentes ? 'Apenas divergentes' : 'Mostrar divergentes'}
+            </Button>
+          </div>
+          <div className="flex justify-end">
+            <Button type="button" variant="ghost" size="sm" onClick={f.reset}>
+              <XCircle className="h-3.5 w-3.5" />
+              Limpar filtros
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

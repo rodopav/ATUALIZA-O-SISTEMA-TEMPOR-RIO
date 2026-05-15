@@ -56,12 +56,18 @@ export function AprovarSolicitacaoDialog({
     if (open && solicitacao) {
       setContaOrigemId(solicitacao.conta_origem_sugerida_id ?? '')
       setObservacao('')
-      setUsarCompensacao(false)
-      // Pre-fill data de compensação com hoje
-      const today = new Date()
-      setDataCompensacao(
-        `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`,
-      )
+      // Se o solicitante sugeriu uma data, pre-marca o checkbox e usa essa data
+      const sugerida = solicitacao.data_compensacao_sugerida
+      if (sugerida) {
+        setUsarCompensacao(true)
+        setDataCompensacao(sugerida)
+      } else {
+        setUsarCompensacao(false)
+        const today = new Date()
+        setDataCompensacao(
+          `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`,
+        )
+      }
       setSubmitError(null)
     }
     if (!open) {
