@@ -6,6 +6,7 @@ import {
   ArrowUpRight,
   ArrowRightLeft,
   CheckCircle2,
+  Coins,
 } from 'lucide-react'
 import { Badge } from '../ui/badge'
 import { formatBRL, formatDate } from '../../lib/format'
@@ -15,16 +16,22 @@ import {
   type LancamentoActionHandlers,
 } from './LancamentoRowActions'
 import type { LancamentoRow } from '../../lib/lancamentos-queries'
+import type { ContaLookupInfo } from '../../lib/contas-lookup-query'
 
 export type ColumnHandlers = LancamentoActionHandlers
 
 export interface BuildColumnsOptions {
   /**
-   * Map opcional id→apelido pra resolver nome de conta quando o embed
-   * vier null por RLS (usuário não tem permissão na conta da outra ponta).
-   * Carregado via contasLookupQuery (público apenas o nome).
+   * Map opcional id→{apelido, is_caixa_fisico} pra resolver nome+selo
+   * de conta quando o embed vier null por RLS. Carregado via
+   * contasLookupQuery (view bypass-RLS apenas com label e flag).
    */
-  contasLookup?: Map<string, string>
+  contasLookup?: Map<string, ContaLookupInfo>
+}
+
+interface ResolvedConta {
+  apelido: string
+  is_caixa_fisico: boolean
 }
 
 export function buildLancamentoColumns(
@@ -32,14 +39,33 @@ export function buildLancamentoColumns(
   opts: BuildColumnsOptions = {},
 ): ColumnDef<LancamentoRow, unknown>[] {
   const lookup = opts.contasLookup
+  const resolveConta = (
+    embedded:
+      | { apelido: string; is_caixa_fisico?: boolean }
+      | null
+      | undefined,
+    id: string | null | undefined,
+  ): ResolvedConta | null => {
+    if (embedded?.apelido) {
+      return {
+        apelido: embedded.apelido,
+        is_caixa_fisico: Boolean(embedded.is_caixa_fisico),
+      }
+    }
+    if (id && lookup) {
+      const info = lookup.get(id)
+      return info
+        ? { apelido: info.apelido, is_caixa_fisico: info.is_caixa_fisico }
+        : null
+    }
+    return null
+  }
+  // Quem ainda chama a função antiga: damos um alias estilo facade
   const resolveApelido = (
     embedded: { apelido: string } | null | undefined,
     id: string | null | undefined,
-  ): string | null => {
-    if (embedded?.apelido) return embedded.apelido
-    if (id && lookup) return lookup.get(id) ?? null
-    return null
-  }
+  ): string | null => resolveConta(embedded, id)?.apelido ?? null
+  void resolveApelido
   return [
     {
       accessorKey: 'data',
@@ -70,6 +96,10 @@ export function buildLancamentoColumns(
       header: 'Descrição',
       cell: (ctx) => {
         const row = ctx.row.original
+        const origem = resolveConta(row.conta_origem, row.conta_origem_id)
+        const destino = resolveConta(row.conta_destino, row.conta_destino_id)
+        const envolveCaixa =
+          origem?.is_caixa_fisico || destino?.is_caixa_fisico
         return (
           <div className="flex max-w-md flex-col gap-1">
             <span className="line-clamp-2 font-medium text-foreground">
@@ -78,6 +108,16 @@ export function buildLancamentoColumns(
             <div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
               {row.fornecedor?.nome ? (
                 <span className="truncate">{row.fornecedor.nome}</span>
+              ) : null}
+              {envolveCaixa ? (
+                <Badge
+                  variant="outline"
+                  className="border-warning/40 bg-warning/10 text-[10px] text-warning"
+                  title="Movimentação envolve caixa físico"
+                >
+                  <Coins className="h-3 w-3" />
+                  Caixa físico
+                </Badge>
               ) : null}
               {row.estorno_de_id ? (
                 <Badge variant="warning" className="text-[10px]">

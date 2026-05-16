@@ -8,6 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert'
 import { Button } from '../components/ui/button'
 import { EmpresaMultiSelect } from '../components/EmpresaMultiSelect'
 import { SaldoGeralTable } from '../components/SaldoGeralTable'
+import { SaldosConsolidadosCards } from '../components/dashboards/SaldosConsolidadosCards'
 import {
   saldoGeralQuery,
   empresasQuery,
@@ -175,6 +176,8 @@ export function SaldoGeralPage(): React.ReactElement {
           </Button>
         }
       />
+
+      <SaldosConsolidadosCards />
 
       <Card>
         <CardContent className="space-y-3 p-5">

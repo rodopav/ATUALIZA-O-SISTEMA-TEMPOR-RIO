@@ -26,6 +26,7 @@ const contaSchema = z.object({
   apelido: z.string().min(2, 'Apelido deve ter ao menos 2 caracteres.'),
   tipo: z.enum(['CORRENTE', 'POUPANCA', 'CAIXA_FISICO', 'CARTAO_CREDITO_CONTA']),
   ativo: z.boolean(),
+  is_caixa_fisico: z.boolean(),
 })
 
 type ContaForm = z.infer<typeof contaSchema>
@@ -38,6 +39,7 @@ const defaultValues: ContaForm = {
   apelido: '',
   tipo: 'CORRENTE',
   ativo: true,
+  is_caixa_fisico: false,
 }
 
 function rowToForm(row: ContaWithEmpresa): ContaForm {
@@ -49,6 +51,12 @@ function rowToForm(row: ContaWithEmpresa): ContaForm {
     apelido: row.apelido,
     tipo: row.tipo,
     ativo: row.ativo,
+    // Compat: contas antigas com tipo CAIXA_FISICO viram is_caixa_fisico
+    // automaticamente, mesmo sem a flag na linha (a migration faz backfill,
+    // mas isso garante o front até a query refresh).
+    is_caixa_fisico:
+      (row as ContaWithEmpresa & { is_caixa_fisico?: boolean })
+        .is_caixa_fisico ?? row.tipo === 'CAIXA_FISICO',
   }
 }
 
@@ -102,6 +110,11 @@ async function saveConta(
   values: ContaForm,
   editing: ContaWithEmpresa | null,
 ): Promise<void> {
+  // Sincroniza ambos os caminhos: se o tipo for CAIXA_FISICO, garantimos
+  // a flag; e a flag dedicada também grava sempre o estado escolhido pelo
+  // usuário. Isso evita inconsistência caso o admin escolha tipo CORRENTE
+  // mas marque "Caixa físico" no switch (caso de uso valido — caixinha).
+  const isCaixa = values.is_caixa_fisico || values.tipo === 'CAIXA_FISICO'
   const payload = {
     empresa_id: values.empresa_id,
     banco: values.banco.trim(),
@@ -110,16 +123,19 @@ async function saveConta(
     apelido: values.apelido.trim(),
     tipo: values.tipo,
     ativo: values.ativo,
+    is_caixa_fisico: isCaixa,
   }
   if (editing) {
     const { error } = await supabase
       .from('contas_bancarias')
-      .update(payload)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .update(payload as any)
       .eq('id', editing.id)
     if (error) throw error
     return
   }
-  const { error } = await supabase.from('contas_bancarias').insert(payload)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await supabase.from('contas_bancarias').insert(payload as any)
   if (error) throw error
 }
 

@@ -23,6 +23,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert'
 import { StatCard } from '../components/dashboards/StatCard'
 import { DivergenciasTable } from '../components/dashboards/DivergenciasTable'
+import { SaldosConsolidadosCards } from '../components/dashboards/SaldosConsolidadosCards'
 import {
   conferenciaQuery,
   conferenciaIntervaloQuery,
@@ -115,6 +116,8 @@ export default function ConferenciaPage(): React.ReactElement {
         title="Conferência"
         description={`Período selecionado: ${formatPeriodoFilter(periodo)}`}
       />
+
+      <SaldosConsolidadosCards />
 
       <Card>
         <CardContent className="space-y-3 p-4">

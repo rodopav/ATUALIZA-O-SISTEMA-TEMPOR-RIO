@@ -23,6 +23,7 @@ import { Skeleton } from '../components/ui/skeleton'
 import { KpiCard } from '../components/dashboards/KpiCard'
 import { SaldoEmpresaChart } from '../components/dashboards/SaldoEmpresaChart'
 import { RecentLancamentos } from '../components/dashboards/RecentLancamentos'
+import { SaldosConsolidadosCards } from '../components/dashboards/SaldosConsolidadosCards'
 import {
   saldoGeralQuery,
   currentPeriodoIso,
@@ -91,6 +92,8 @@ export function DashboardPage(): React.ReactElement {
           <AlertDescription>{errorMsg}</AlertDescription>
         </Alert>
       ) : null}
+
+      <SaldosConsolidadosCards />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard

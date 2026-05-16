@@ -33,6 +33,7 @@ export interface ContaFormValues {
   apelido: string
   tipo: ContaTipo
   ativo: boolean
+  is_caixa_fisico: boolean
 }
 
 interface ContaFormFieldsProps {
@@ -119,6 +120,28 @@ export function ContaFormFields({ form }: ContaFormFieldsProps): React.ReactElem
           )}
         />
       </div>
+
+      <Controller
+        name="is_caixa_fisico"
+        control={control}
+        render={({ field }) => (
+          <div className="flex items-center justify-between rounded-md border border-primary/40 bg-primary/[0.04] p-3">
+            <div>
+              <Label htmlFor="caixa-fisico-switch">Caixa físico</Label>
+              <p className="text-xs text-muted-foreground">
+                Marque se essa conta representa dinheiro em caixa (cofre,
+                gaveta, valores físicos). O saldo entra em "Saldo Caixa
+                físico" no dashboard e as movimentações ganham selo.
+              </p>
+            </div>
+            <Switch
+              id="caixa-fisico-switch"
+              checked={field.value}
+              onCheckedChange={field.onChange}
+            />
+          </div>
+        )}
+      />
 
       <Controller
         name="ativo"

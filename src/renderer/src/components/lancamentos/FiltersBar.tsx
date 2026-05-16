@@ -42,11 +42,17 @@ export interface LancamentosFiltersState {
   responsavelId: string | null
   fornecedorId: string | null
   tipoOperacaoId: string | null
-  status: 'all' | 'conciliado' | 'pendente' | 'estornado'
+  /**
+   * Multi-select de status. Array vazio = sem filtro (mostra todos).
+   * Frank pediu pra trocar dropdown por checkboxes.
+   */
+  status: Array<'conciliado' | 'pendente' | 'estornado'>
   valorMin: string
   valorMax: string
   search: string
 }
+
+export type LancamentoStatusKey = LancamentosFiltersState['status'][number]
 
 export function defaultFilters(): LancamentosFiltersState {
   const now = new Date()
@@ -61,7 +67,7 @@ export function defaultFilters(): LancamentosFiltersState {
     responsavelId: null,
     fornecedorId: null,
     tipoOperacaoId: null,
-    status: 'all',
+    status: [],
     valorMin: '',
     valorMax: '',
     search: '',
@@ -92,10 +98,12 @@ const NATUREZA_CHIPS: Array<{
   { key: 'SAIDA', label: 'Saídas' },
 ]
 
-const STATUS_OPTIONS: Array<{ key: LancamentosFiltersState['status']; label: string }> = [
-  { key: 'all', label: 'Todos' },
-  { key: 'conciliado', label: 'Conciliados' },
+const STATUS_OPTIONS: Array<{
+  key: LancamentoStatusKey
+  label: string
+}> = [
   { key: 'pendente', label: 'Pendentes' },
+  { key: 'conciliado', label: 'Conciliados' },
   { key: 'estornado', label: 'Estornados' },
 ]
 
@@ -106,7 +114,7 @@ function countActiveAdvanced(value: LancamentosFiltersState): number {
   if (value.responsavelId) n++
   if (value.fornecedorId) n++
   if (value.tipoOperacaoId) n++
-  if (value.status !== 'all') n++
+  if (value.status.length > 0) n++
   if (value.valorMin) n++
   if (value.valorMax) n++
   return n
@@ -425,32 +433,41 @@ export function FiltersBar({
                 </Select>
               </div>
 
-              {/* Status conciliação */}
+              {/* Status conciliação — checkboxes multi */}
               <div className="space-y-2 lg:col-span-3">
-                <Label htmlFor="status-filter" className="flex items-center gap-1.5">
+                <Label className="flex items-center gap-1.5">
                   <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground" />
-                  Status
+                  Status (selecione um ou mais)
                 </Label>
-                <Select
-                  value={value.status}
-                  onValueChange={(v) =>
-                    onChange({
-                      ...value,
-                      status: v as LancamentosFiltersState['status'],
-                    })
-                  }
-                >
-                  <SelectTrigger id="status-filter">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STATUS_OPTIONS.map((o) => (
-                      <SelectItem key={o.key} value={o.key}>
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex flex-wrap gap-2">
+                  {STATUS_OPTIONS.map((o) => {
+                    const checked = value.status.includes(o.key)
+                    return (
+                      <label
+                        key={o.key}
+                        className={cn(
+                          'inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-sm transition-colors',
+                          checked
+                            ? 'border-primary/40 bg-primary/10 text-foreground'
+                            : 'border-border bg-background text-muted-foreground hover:border-border hover:bg-muted/40',
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 cursor-pointer accent-primary"
+                          checked={checked}
+                          onChange={(e) => {
+                            const next = e.target.checked
+                              ? [...value.status, o.key]
+                              : value.status.filter((s) => s !== o.key)
+                            onChange({ ...value, status: next })
+                          }}
+                        />
+                        <span>{o.label}</span>
+                      </label>
+                    )
+                  })}
+                </div>
               </div>
 
               {/* Faixa de valor */}

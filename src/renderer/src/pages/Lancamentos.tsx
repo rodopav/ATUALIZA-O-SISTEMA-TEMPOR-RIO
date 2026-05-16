@@ -274,6 +274,44 @@ export function LancamentosPage(): React.ReactElement {
         }
       />
 
+      {/* Pills atalho: troca rápida de status — ex.: clicar em "Estornados"
+          deixa só estorno como filtro ativo (limpa os outros status). */}
+      <div className="flex flex-wrap items-center gap-2">
+        {[
+          { key: 'todos', label: 'Todos', selection: [] as Array<'conciliado' | 'pendente' | 'estornado'> },
+          { key: 'pendente', label: 'Pendentes', selection: ['pendente'] as const },
+          { key: 'conciliado', label: 'Conciliados', selection: ['conciliado'] as const },
+          { key: 'estornado', label: 'Estornados', selection: ['estornado'] as const },
+        ].map((opt) => {
+          const sel = filters.status
+          const active =
+            opt.selection.length === 0
+              ? sel.length === 0
+              : sel.length === opt.selection.length &&
+                opt.selection.every((s) => sel.includes(s))
+          return (
+            <button
+              key={opt.key}
+              type="button"
+              onClick={() =>
+                setFilters({
+                  ...filters,
+                  status: [...opt.selection] as typeof filters.status,
+                })
+              }
+              className={cn(
+                'rounded-full border px-4 py-1.5 text-sm font-medium transition-colors',
+                active
+                  ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                  : 'border-border bg-background text-muted-foreground hover:border-border hover:bg-muted/40 hover:text-foreground',
+              )}
+            >
+              {opt.label}
+            </button>
+          )
+        })}
+      </div>
+
       <FiltersBar
         value={filters}
         onChange={setFilters}

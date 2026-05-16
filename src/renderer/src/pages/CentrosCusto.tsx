@@ -20,6 +20,7 @@ import { StatCard } from '../components/dashboards/StatCard'
 import { CentrosCustoChart } from '../components/dashboards/CentrosCustoChart'
 import { CentrosCustoPie } from '../components/dashboards/CentrosCustoPie'
 import { CentrosCustoTable } from '../components/dashboards/CentrosCustoTable'
+import { SaldosConsolidadosCards } from '../components/dashboards/SaldosConsolidadosCards'
 import {
   centrosCustoDashboardQuery,
   centrosCustoIntervaloQuery,
@@ -97,6 +98,8 @@ export default function CentrosCustoPage(): React.ReactElement {
         title="Centros de Custo"
         description={`Período selecionado: ${formatPeriodoFilter(periodo)}`}
       />
+
+      <SaldosConsolidadosCards />
 
       <Card>
         <CardContent className="space-y-3 p-4">

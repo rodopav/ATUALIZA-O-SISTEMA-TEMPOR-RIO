@@ -30,8 +30,8 @@ export interface LancamentoRow {
   conciliacao_observacao: string | null
   created_at: string
   updated_at: string
-  conta_origem: { apelido: string } | null
-  conta_destino: { apelido: string } | null
+  conta_origem: { apelido: string; is_caixa_fisico?: boolean } | null
+  conta_destino: { apelido: string; is_caixa_fisico?: boolean } | null
   centro: { nome: string } | null
   tipo: { nome: string; is_transferencia: boolean } | null
   fornecedor: { nome: string } | null
@@ -69,7 +69,18 @@ export interface LancamentosListFilters {
   responsavelId?: string | null
   fornecedorId?: string | null
   tipoOperacaoId?: string | null
-  status?: 'all' | 'conciliado' | 'pendente' | 'estornado' | null
+  /**
+   * Multi-select. Array vazio (ou null/undefined) = não filtra. Senão,
+   * mostra qualquer linha que case em ANY dos status. Compat: ainda
+   * aceita string única (legacy callers).
+   */
+  status?:
+    | Array<'conciliado' | 'pendente' | 'estornado'>
+    | 'all'
+    | 'conciliado'
+    | 'pendente'
+    | 'estornado'
+    | null
   valorMin?: number | null
   valorMax?: number | null
   search?: string | null
@@ -77,8 +88,8 @@ export interface LancamentosListFilters {
 
 const SELECT_WITH_RELATIONS = `
   *,
-  conta_origem:contas_bancarias!conta_origem_id(apelido),
-  conta_destino:contas_bancarias!conta_destino_id(apelido),
+  conta_origem:contas_bancarias!conta_origem_id(apelido,is_caixa_fisico),
+  conta_destino:contas_bancarias!conta_destino_id(apelido,is_caixa_fisico),
   centro:centros_de_custo(nome),
   tipo:tipos_operacao(nome,is_transferencia),
   fornecedor:fornecedores_clientes(nome),
@@ -143,22 +154,42 @@ export const lancamentosListQuery = (filters: LancamentosListFilters) =>
       if (filters.valorMax !== null && filters.valorMax !== undefined) {
         q = q.lte('valor', filters.valorMax)
       }
-      if (filters.status === 'conciliado') {
-        q = q.not('conciliado_em', 'is', null)
-      } else if (filters.status === 'pendente') {
-        q = q.is('conciliado_em', null).is('motivo_estorno', null)
-      } else if (filters.status === 'estornado') {
-        q = q.not('motivo_estorno', 'is', null)
-      }
+      // Status: aplicado client-side mais abaixo (sobre `rows`). Aceita
+      // array (multi) ou string legacy. PostgREST OR de NULL-checks é
+      // chato de codificar; com .limit(200) o filtro client é trivial.
       if (filters.search && filters.search.trim().length > 0) {
         q = q.ilike('descricao', `%${filters.search.trim()}%`)
       }
 
       const { data, error } = await q
       if (error) throw error
+      let rows = (data ?? []) as unknown as LancamentoRow[]
+
+      const statusList = Array.isArray(filters.status)
+        ? filters.status
+        : filters.status && filters.status !== 'all'
+          ? [filters.status]
+          : []
+      // Filtro client-side de status (multi). Reflete a semântica antiga:
+      //  - 'conciliado': conciliado_em IS NOT NULL
+      //  - 'pendente':   conciliado_em IS NULL AND motivo_estorno IS NULL
+      //  - 'estornado':  motivo_estorno IS NOT NULL
+      if (statusList.length > 0) {
+        rows = rows.filter((r) => {
+          if (statusList.includes('conciliado') && r.conciliado_em) return true
+          if (
+            statusList.includes('pendente') &&
+            !r.conciliado_em &&
+            !r.motivo_estorno
+          )
+            return true
+          if (statusList.includes('estornado') && r.motivo_estorno) return true
+          return false
+        })
+      }
+
       // Filtro client-side por empresa: a empresa vem das contas (origem ou
       // destino). Postgrest não permite filtro em embed deep facilmente.
-      const rows = (data ?? []) as unknown as LancamentoRow[]
       if (filters.empresaId) {
         // Precisamos do empresa_id pelo lookup; mas o embed atual só traz apelido.
         // Por isso filtrar empresa exige fetch adicional ou apoio no lookup map

@@ -3,7 +3,11 @@ import { supabase } from './supabase'
 import type { Tables } from '../../../shared/database.types'
 
 export type Empresa = Tables<'empresas'>
-export type ContaBancaria = Tables<'contas_bancarias'>
+// ContaBancaria estende com is_caixa_fisico (adicionada via migration
+// mas o database.types ainda não foi regenerado).
+export type ContaBancaria = Tables<'contas_bancarias'> & {
+  is_caixa_fisico: boolean
+}
 export type CentroCusto = Tables<'centros_de_custo'>
 export type TipoOperacao = Tables<'tipos_operacao'>
 export type SaldoGeralRow = Tables<'v_saldo_geral'>

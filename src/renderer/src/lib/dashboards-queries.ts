@@ -23,6 +23,36 @@ export type SaldoGeralRow = Tables<'v_saldo_geral'>
 
 export type AcaoAudit = Enums<'acao_audit'>
 
+/** Saldos consolidados pros cards do dashboard (Contas / Caixa físico / Geral). */
+export interface SaldosConsolidados {
+  saldo_contas: number
+  saldo_caixa_fisico: number
+  saldo_geral: number
+}
+
+export const saldosConsolidadosQuery = queryOptions({
+  queryKey: ['dashboards', 'saldos-consolidados'] as const,
+  queryFn: async (): Promise<SaldosConsolidados> => {
+    const { data, error } = await rpcUntyped(
+      'dashboard_saldos_consolidados',
+      {},
+    )
+    if (error) throw error as Error
+    const rows = (data ?? []) as Array<{
+      saldo_contas: string | number | null
+      saldo_caixa_fisico: string | number | null
+      saldo_geral: string | number | null
+    }>
+    const r = rows[0]
+    return {
+      saldo_contas: Number(r?.saldo_contas ?? 0),
+      saldo_caixa_fisico: Number(r?.saldo_caixa_fisico ?? 0),
+      saldo_geral: Number(r?.saldo_geral ?? 0),
+    }
+  },
+  staleTime: 1000 * 30,
+})
+
 export interface AuditLogRow {
   id: number
   entidade: string
