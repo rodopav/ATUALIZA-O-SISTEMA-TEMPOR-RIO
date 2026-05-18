@@ -71,19 +71,36 @@ export function setupAutoUpdater(win: BrowserWindow): void {
 
   autoUpdater.on('error', (err) => {
     log.error('[updater] Erro no auto-updater:', err)
-    const message = err instanceof Error ? err.message : String(err)
-    pushUpdate(win, { type: 'error', message })
+    pushUpdate(win, { type: 'error', message: sanitizeUpdaterError(err) })
   })
 
   if (app.isPackaged) {
     autoUpdater.checkForUpdatesAndNotify().catch((err) => {
       log.error('[updater] Falha ao checar atualizações:', err)
-      pushUpdate(win, {
-        type: 'error',
-        message: err instanceof Error ? err.message : String(err),
-      })
+      pushUpdate(win, { type: 'error', message: sanitizeUpdaterError(err) })
     })
   }
+}
+
+/**
+ * Erros do electron-updater às vezes vêm com body inteiro de XML/HTML
+ * quando o latest.yml referencia um asset 404 (release publicada com
+ * yml sem .exe correspondente, por exemplo). Filtra isso pra não vazar
+ * um alerta gigante de XML pro usuário.
+ */
+function sanitizeUpdaterError(err: unknown): string {
+  const raw = err instanceof Error ? err.message : String(err)
+  const firstLine = raw.split('\n')[0] ?? raw
+  // Se contém marcadores de feed/HTML, devolve uma mensagem genérica.
+  if (
+    raw.includes('<?xml') ||
+    raw.includes('<feed') ||
+    raw.includes('<html') ||
+    raw.length > 280
+  ) {
+    return 'Falha ao baixar atualização. Tente novamente em alguns minutos. Se persistir, reinstale a partir do GitHub Releases.'
+  }
+  return firstLine.length > 240 ? firstLine.slice(0, 237) + '...' : firstLine
 }
 
 export async function checkForUpdates(): Promise<{
