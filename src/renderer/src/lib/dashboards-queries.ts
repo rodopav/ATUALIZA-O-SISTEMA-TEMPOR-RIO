@@ -32,6 +32,52 @@ export interface SaldosConsolidados {
   saldo_limite_total: number
 }
 
+/** Linha por conta que tem limite de conta (cheque especial). */
+export interface LimitePorConta {
+  conta_id: string
+  apelido: string
+  banco: string | null
+  empresa: string | null
+  valor_limite: number
+  saldo_atual: number
+  /** limite + min(saldo, 0) — quanto do cheque especial ainda dá pra usar */
+  limite_disponivel: number
+  /** saldo + valor_limite — total que dá pra gastar antes de bater no teto */
+  total_disponivel: number
+}
+
+export const limitesPorContaQuery = queryOptions({
+  queryKey: ['dashboards', 'limites-por-conta'] as const,
+  queryFn: async (): Promise<LimitePorConta[]> => {
+    const { data, error } = await rpcUntyped(
+      'dashboard_limites_por_conta',
+      {},
+    )
+    if (error) throw error as Error
+    const rows = (data ?? []) as Array<{
+      conta_id: string
+      apelido: string
+      banco: string | null
+      empresa: string | null
+      valor_limite: string | number | null
+      saldo_atual: string | number | null
+      limite_disponivel: string | number | null
+      total_disponivel: string | number | null
+    }>
+    return rows.map((r) => ({
+      conta_id: r.conta_id,
+      apelido: r.apelido,
+      banco: r.banco,
+      empresa: r.empresa,
+      valor_limite: Number(r.valor_limite ?? 0),
+      saldo_atual: Number(r.saldo_atual ?? 0),
+      limite_disponivel: Number(r.limite_disponivel ?? 0),
+      total_disponivel: Number(r.total_disponivel ?? 0),
+    }))
+  },
+  staleTime: 1000 * 30,
+})
+
 export const saldosConsolidadosQuery = queryOptions({
   queryKey: ['dashboards', 'saldos-consolidados'] as const,
   queryFn: async (): Promise<SaldosConsolidados> => {

@@ -24,6 +24,7 @@ import { KpiCard } from '../components/dashboards/KpiCard'
 import { SaldoEmpresaChart } from '../components/dashboards/SaldoEmpresaChart'
 import { RecentLancamentos } from '../components/dashboards/RecentLancamentos'
 import { SaldosConsolidadosCards } from '../components/dashboards/SaldosConsolidadosCards'
+import { LimitesPorContaSection } from '../components/dashboards/LimitesPorContaSection'
 import {
   saldoGeralQuery,
   currentPeriodoIso,
@@ -94,6 +95,8 @@ export function DashboardPage(): React.ReactElement {
       ) : null}
 
       <SaldosConsolidadosCards />
+
+      <LimitesPorContaSection />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard

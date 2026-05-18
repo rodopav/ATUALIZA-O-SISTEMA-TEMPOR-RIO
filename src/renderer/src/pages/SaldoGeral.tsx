@@ -9,6 +9,7 @@ import { Button } from '../components/ui/button'
 import { EmpresaMultiSelect } from '../components/EmpresaMultiSelect'
 import { SaldoGeralTable } from '../components/SaldoGeralTable'
 import { SaldosConsolidadosCards } from '../components/dashboards/SaldosConsolidadosCards'
+import { LimitesPorContaSection } from '../components/dashboards/LimitesPorContaSection'
 import {
   saldoGeralQuery,
   empresasQuery,
@@ -178,6 +179,8 @@ export function SaldoGeralPage(): React.ReactElement {
       />
 
       <SaldosConsolidadosCards />
+
+      <LimitesPorContaSection />
 
       <Card>
         <CardContent className="space-y-3 p-5">
