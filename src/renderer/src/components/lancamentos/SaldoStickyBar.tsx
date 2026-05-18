@@ -115,7 +115,7 @@ function Tile({
         <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
           {label}
         </p>
-        <p className={cn('text-sm tabular-nums', valueClassName)}>{value}</p>
+        <p className={cn('font-mono text-sm font-semibold tabular-nums', valueClassName)}>{value}</p>
       </div>
     </div>
   )

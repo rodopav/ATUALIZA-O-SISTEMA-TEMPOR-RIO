@@ -12,6 +12,9 @@ interface StatCardProps {
   description?: string
 }
 
+// Design system RODOPAV — números em mono (JetBrains Mono) pra dar
+// vocabulário industrial de mostrador.
+
 const ACCENT_CLASSES: Record<NonNullable<StatCardProps['accent']>, string> = {
   default: 'text-foreground',
   success: 'text-success',
@@ -51,7 +54,7 @@ export function StatCard({
           ) : (
             <p
               className={cn(
-                'text-2xl font-bold tabular-nums',
+                'font-mono text-2xl font-semibold tabular-nums tracking-tight',
                 ACCENT_CLASSES[accent],
               )}
             >

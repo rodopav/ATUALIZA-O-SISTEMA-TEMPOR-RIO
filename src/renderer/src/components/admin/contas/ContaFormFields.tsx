@@ -34,6 +34,10 @@ export interface ContaFormValues {
   tipo: ContaTipo
   ativo: boolean
   is_caixa_fisico: boolean
+  /** Cheque especial: conta aceita lançamento mesmo com saldo<0 até este valor. */
+  tem_limite: boolean
+  /** Valor máximo do limite (R$). 0 se não tem. Aceitamos string vazia no form. */
+  valor_limite: string
 }
 
 interface ContaFormFieldsProps {
@@ -139,6 +143,45 @@ export function ContaFormFields({ form }: ContaFormFieldsProps): React.ReactElem
               checked={field.value}
               onCheckedChange={field.onChange}
             />
+          </div>
+        )}
+      />
+
+      <Controller
+        name="tem_limite"
+        control={control}
+        render={({ field: limiteSwitch }) => (
+          <div className="space-y-3 rounded-md border border-destructive/30 bg-destructive/[0.04] p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor="limite-switch">
+                  Limite de conta (cheque especial)
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Permite saldo negativo até o valor do limite. Lançamentos que
+                  usam o limite ganham selo. O saldo do limite aparece em um
+                  card separado no dashboard (não soma no Saldo Geral).
+                </p>
+              </div>
+              <Switch
+                id="limite-switch"
+                checked={limiteSwitch.value}
+                onCheckedChange={limiteSwitch.onChange}
+              />
+            </div>
+            {limiteSwitch.value ? (
+              <div className="space-y-1">
+                <Label htmlFor="valor-limite">Valor do limite (R$) *</Label>
+                <Input
+                  id="valor-limite"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="Ex: 5000.00"
+                  {...register('valor_limite')}
+                />
+              </div>
+            ) : null}
           </div>
         )}
       />

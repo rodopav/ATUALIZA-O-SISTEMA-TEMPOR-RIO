@@ -24,6 +24,7 @@ const tipoSchema = z.object({
     .regex(/^[A-Z0-9_-]+$/, 'Use apenas letras maiúsculas, números, "_" ou "-".'),
   nome: z.string().min(2, 'Nome deve ter ao menos 2 caracteres.'),
   is_transferencia: z.boolean(),
+  is_tarifa: z.boolean(),
   ativo: z.boolean(),
 })
 
@@ -33,14 +34,17 @@ const defaultValues: TipoForm = {
   codigo: '',
   nome: '',
   is_transferencia: false,
+  is_tarifa: false,
   ativo: true,
 }
 
 function rowToForm(row: TipoOperacao): TipoForm {
+  const extra = row as TipoOperacao & { is_tarifa?: boolean }
   return {
     codigo: row.codigo,
     nome: row.nome,
     is_transferencia: row.is_transferencia,
+    is_tarifa: extra.is_tarifa ?? false,
     ativo: row.ativo,
   }
 }
@@ -154,6 +158,28 @@ function FormFields({ form }: FormFieldsProps): React.ReactElement {
       />
 
       <Controller
+        name="is_tarifa"
+        control={control}
+        render={({ field }) => (
+          <div className="flex items-center justify-between rounded-md border border-destructive/30 bg-destructive/[0.04] p-3">
+            <div>
+              <Label htmlFor="tarifa-switch">Tarifa (pode estourar saldo)</Label>
+              <p className="text-xs text-muted-foreground">
+                Lançamentos deste tipo passam mesmo sem saldo na conta — útil
+                pra tarifas bancárias, juros, IOF. Ficam marcados como TARIFA
+                na listagem.
+              </p>
+            </div>
+            <Switch
+              id="tarifa-switch"
+              checked={field.value}
+              onCheckedChange={field.onChange}
+            />
+          </div>
+        )}
+      />
+
+      <Controller
         name="ativo"
         control={control}
         render={({ field }) => (
@@ -181,17 +207,20 @@ async function saveTipo(values: TipoForm, editing: TipoOperacao | null): Promise
     codigo: values.codigo.trim().toUpperCase(),
     nome: values.nome.trim(),
     is_transferencia: values.is_transferencia,
+    is_tarifa: values.is_tarifa,
     ativo: values.ativo,
   }
   if (editing) {
     const { error } = await supabase
       .from('tipos_operacao')
-      .update(payload)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .update(payload as any)
       .eq('id', editing.id)
     if (error) throw error
     return
   }
-  const { error } = await supabase.from('tipos_operacao').insert(payload)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await supabase.from('tipos_operacao').insert(payload as any)
   if (error) throw error
 }
 

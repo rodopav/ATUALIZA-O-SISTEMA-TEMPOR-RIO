@@ -23,11 +23,13 @@ export type SaldoGeralRow = Tables<'v_saldo_geral'>
 
 export type AcaoAudit = Enums<'acao_audit'>
 
-/** Saldos consolidados pros cards do dashboard (Contas / Caixa físico / Geral). */
+/** Saldos consolidados pros cards do dashboard. */
 export interface SaldosConsolidados {
   saldo_contas: number
   saldo_caixa_fisico: number
   saldo_geral: number
+  /** Soma dos limites disponíveis (cheque especial). NÃO somado em saldo_geral. */
+  saldo_limite_total: number
 }
 
 export const saldosConsolidadosQuery = queryOptions({
@@ -42,12 +44,14 @@ export const saldosConsolidadosQuery = queryOptions({
       saldo_contas: string | number | null
       saldo_caixa_fisico: string | number | null
       saldo_geral: string | number | null
+      saldo_limite_total: string | number | null
     }>
     const r = rows[0]
     return {
       saldo_contas: Number(r?.saldo_contas ?? 0),
       saldo_caixa_fisico: Number(r?.saldo_caixa_fisico ?? 0),
       saldo_geral: Number(r?.saldo_geral ?? 0),
+      saldo_limite_total: Number(r?.saldo_limite_total ?? 0),
     }
   },
   staleTime: 1000 * 30,

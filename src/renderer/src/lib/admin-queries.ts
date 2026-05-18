@@ -39,17 +39,28 @@ export async function fetchEmpresas(): Promise<Empresa[]> {
 
 export interface ContaWithEmpresa extends ContaBancaria {
   empresa: { razao_social: string; nome_fantasia: string | null } | null
+  limite?: { valor_limite: number; ativo: boolean } | null
 }
 
 export async function fetchContas(): Promise<ContaWithEmpresa[]> {
   const { data, error } = await supabase
     .from('contas_bancarias')
-    .select('*, empresa:empresas(razao_social, nome_fantasia)')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .select(
+      '*, empresa:empresas(razao_social, nome_fantasia), limite:limites_conta(valor_limite, ativo)' as any,
+    )
     .order('apelido', { ascending: true })
   if (error) throw error
-  // The select-with-join shape isn't precisely inferred; we declared
-  // ContaWithEmpresa above to mirror the chosen shape.
-  return (data ?? []) as unknown as ContaWithEmpresa[]
+  // limite vem como array (FK reverse). Achatar pra single (PK 1:1).
+  type Raw = Omit<ContaWithEmpresa, 'limite'> & {
+    limite?: Array<{ valor_limite: number; ativo: boolean }> | null
+  }
+  const rows = (data ?? []) as unknown as Raw[]
+  return rows.map<ContaWithEmpresa>((r) => {
+    const arr = Array.isArray(r.limite) ? r.limite : null
+    const lim = arr?.find((l) => l.ativo) ?? null
+    return { ...r, limite: lim }
+  })
 }
 
 export async function fetchCentros(): Promise<CentroCusto[]> {

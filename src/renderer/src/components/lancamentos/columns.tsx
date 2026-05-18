@@ -7,6 +7,8 @@ import {
   ArrowRightLeft,
   CheckCircle2,
   Coins,
+  Receipt,
+  CreditCard,
 } from 'lucide-react'
 import { Badge } from '../ui/badge'
 import { formatBRL, formatDate } from '../../lib/format'
@@ -117,6 +119,26 @@ export function buildLancamentoColumns(
                 >
                   <Coins className="h-3 w-3" />
                   Caixa físico
+                </Badge>
+              ) : null}
+              {row.is_tarifa ? (
+                <Badge
+                  variant="outline"
+                  className="border-amber-500/50 bg-amber-500/10 text-[10px] text-amber-600 dark:text-amber-400"
+                  title="Tarifa bancária — pode ter estourado saldo"
+                >
+                  <Receipt className="h-3 w-3" />
+                  TARIFA
+                </Badge>
+              ) : null}
+              {row.usou_limite ? (
+                <Badge
+                  variant="outline"
+                  className="border-destructive/50 bg-destructive/10 text-[10px] text-destructive"
+                  title="Este lançamento usou o limite (cheque especial) da conta"
+                >
+                  <CreditCard className="h-3 w-3" />
+                  LIMITE
                 </Badge>
               ) : null}
               {row.estorno_de_id ? (

@@ -28,6 +28,10 @@ export interface LancamentoRow {
   conciliado_em: string | null
   conciliado_por: string | null
   conciliacao_observacao: string | null
+  /** Snapshot do tipo_operacao.is_tarifa no momento do INSERT. */
+  is_tarifa: boolean
+  /** Marcado pelo trigger enforce_saldo quando saldo < valor + limite > 0. */
+  usou_limite: boolean
   created_at: string
   updated_at: string
   conta_origem: { apelido: string; is_caixa_fisico?: boolean } | null
