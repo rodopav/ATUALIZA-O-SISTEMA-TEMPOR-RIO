@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { NavLink } from 'react-router-dom'
-import { Wallet, ShieldCheck, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { Button } from '../ui/button'
 import { cn } from '../../lib/cn'
 
@@ -43,22 +43,25 @@ export function SidebarContent({
   onNavigate,
   onClose,
 }: SidebarContentProps): React.ReactElement {
-  const Crest = appMode === 'admin' ? ShieldCheck : Wallet
-  const subtitle = appMode === 'admin' ? 'Admin · IAM' : 'Tesouraria'
+  const subtitle = appMode === 'admin' ? 'IAM' : 'Tesouraria'
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex h-16 shrink-0 items-center justify-between border-b border-sidebar-border px-5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-accent text-sidebar-accent-foreground ring-1 ring-sidebar-border">
-            <Crest className="h-4 w-4" />
-          </div>
-          <div className="leading-tight">
-            <p className="text-sm font-semibold text-sidebar-foreground">
-              {appTitle}
-            </p>
-            <p className="text-[11px] text-sidebar-foreground/60">{subtitle}</p>
-          </div>
+      {/* Brand block — assinatura RODOPAV: ROD●PAV com bolinha amber glow */}
+      <div className="relative flex h-[68px] shrink-0 items-center justify-between border-b border-sidebar-border/60 px-4">
+        <div className="flex flex-col gap-0.5 leading-tight">
+          <span className="flex items-center font-mono text-[15px] font-extrabold tracking-[1px] text-sidebar-foreground">
+            ROD
+            <span
+              aria-hidden
+              className="mx-[1px] inline-flex h-2 w-2 rounded-full bg-amb-400 align-middle shadow-[0_0_8px_rgba(245,158,11,0.7)]"
+            />
+            PAV
+          </span>
+          <span className="flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-[2px] text-sidebar-foreground/40">
+            <span aria-hidden className="h-px w-5 bg-amb-400" />
+            {subtitle}
+          </span>
         </div>
         {onClose ? (
           <Button
@@ -74,7 +77,10 @@ export function SidebarContent({
         ) : null}
       </div>
 
-      <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-5">
+      {/* Tarja diagonal — assinatura visual RODOPAV */}
+      <div aria-hidden className="tarja-rodopav h-1 shrink-0" />
+
+      <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-5">
         {sections.map((section) => (
           <SidebarSection
             key={section.label}
@@ -85,10 +91,19 @@ export function SidebarContent({
         ))}
       </nav>
 
-      <div className="shrink-0 border-t border-sidebar-border px-5 py-4">
-        <p className="text-[11px] text-sidebar-foreground/50">
-          {appTitle} · v{version || '0.2.0'}
-        </p>
+      {/* Tarja diagonal antes do footer */}
+      <div aria-hidden className="tarja-rodopav h-1 shrink-0" />
+
+      <div className="shrink-0 border-t border-sidebar-border/60 px-4 py-3">
+        <div className="flex items-center gap-2">
+          <span
+            aria-hidden
+            className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]"
+          />
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50">
+            {appTitle} · v{version || '0.2.0'}
+          </p>
+        </div>
       </div>
     </div>
   )
@@ -108,9 +123,13 @@ function SidebarSection({
   if (items.length === 0) return null
   return (
     <div className="space-y-1">
-      <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-sidebar-foreground/40">
-        {label}
-      </p>
+      {/* Cabeçalho de grupo: tracinho amarelo + caption uppercase */}
+      <div className="mb-1.5 flex items-center gap-2 px-3">
+        <span aria-hidden className="h-px w-3 bg-amb-400" />
+        <span className="text-[9px] font-bold uppercase tracking-[2.5px] text-sidebar-foreground/40">
+          {label}
+        </span>
+      </div>
       <ul className="space-y-0.5">
         {items.map((item) => (
           <li key={item.to}>
@@ -144,29 +163,25 @@ function SidebarLink({
       to={item.to}
       end={item.end}
       onClick={onNavigate}
+      // Active state RODOPAV: barra amarela 3px à esquerda + glow vazando.
+      // Lembra sinalização contínua de pista (linha amarela na rodovia).
       className={({ isActive }) =>
         cn(
-          'group relative flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors',
+          'group relative flex items-center gap-3 rounded-md px-3 py-2.5 text-[13px] font-medium transition-all duration-150',
           isActive
-            ? 'bg-sidebar-accent text-sidebar-accent-foreground shadow-sm'
-            : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground',
+            ? 'bg-sidebar-accent/15 text-sidebar-foreground shadow-[inset_3px_0_0_0_hsl(var(--amb-400)),inset_10px_0_18px_-10px_rgba(245,158,11,0.55)]'
+            : 'text-sidebar-foreground/60 hover:pl-4 hover:bg-sidebar-accent/10 hover:text-sidebar-foreground',
         )
       }
     >
       {({ isActive }) => (
         <>
-          {isActive ? (
-            <span
-              aria-hidden="true"
-              className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r bg-primary-foreground"
-            />
-          ) : null}
           <Icon
             className={cn(
-              'h-4 w-4 shrink-0 transition-colors',
+              'h-[18px] w-[18px] shrink-0 transition-colors',
               isActive
-                ? 'text-sidebar-accent-foreground'
-                : 'text-sidebar-foreground/60 group-hover:text-sidebar-foreground',
+                ? 'text-amb-400'
+                : 'text-sidebar-foreground/50 group-hover:text-sidebar-foreground',
             )}
           />
           <span className="flex-1 truncate">{item.label}</span>
@@ -174,9 +189,8 @@ function SidebarLink({
             <span
               aria-label={`${item.badgeCount} pendentes`}
               className={cn(
-                'inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1.5 text-[10px] font-semibold tabular-nums',
-                'bg-warning/20 text-warning-foreground ring-1 ring-warning/30',
-                'dark:bg-warning/30 dark:text-warning',
+                'inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1.5 font-mono text-[10px] font-semibold tabular-nums',
+                'bg-amb-400/20 text-amb-400 ring-1 ring-amb-400/30',
               )}
             >
               {formatBadge(item.badgeCount ?? 0)}

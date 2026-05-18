@@ -12,11 +12,27 @@ interface KpiCardProps {
   tone?: 'default' | 'success' | 'destructive' | 'warning'
 }
 
-const TONE_RING: Record<NonNullable<KpiCardProps['tone']>, string> = {
-  default: 'bg-muted text-muted-foreground',
-  success: 'bg-success/10 text-success',
-  destructive: 'bg-destructive/10 text-destructive',
-  warning: 'bg-warning/15 text-warning-foreground dark:text-warning',
+/**
+ * KPI Card RODOPAV: strip colorida no topo + ícone tintado + valor
+ * mono extrabold (mostrador industrial) + label uppercase com tracking
+ * largo + hover com sombra amber.
+ */
+
+const STRIP: Record<NonNullable<KpiCardProps['tone']>, string> = {
+  default: 'bg-zinc-400 dark:bg-zinc-500',
+  success: 'bg-emerald-500',
+  destructive: 'bg-red-500',
+  warning: 'bg-amb-400',
+}
+
+const TINTA: Record<NonNullable<KpiCardProps['tone']>, string> = {
+  default:
+    'bg-zinc-500/10 text-zinc-600 dark:bg-zinc-500/15 dark:text-zinc-400',
+  success:
+    'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400',
+  destructive:
+    'bg-red-500/10 text-red-600 dark:bg-red-500/15 dark:text-red-400',
+  warning: 'bg-amb-400/15 text-amb-600 dark:bg-amb-400/15 dark:text-amb-400',
 }
 
 export function KpiCard({
@@ -28,26 +44,35 @@ export function KpiCard({
   tone = 'default',
 }: KpiCardProps): React.ReactElement {
   return (
-    <Card>
-      <CardContent className="p-6">
+    <Card
+      className={cn(
+        'group relative overflow-hidden transition-all duration-200',
+        'hover:-translate-y-0.5 hover:border-amb-400/40',
+        'hover:shadow-[0_8px_24px_-12px_rgba(245,158,11,0.25)]',
+      )}
+    >
+      {/* Strip colorida no topo */}
+      <div aria-hidden className={cn('absolute inset-x-0 top-0 h-[3px]', STRIP[tone])} />
+
+      <CardContent className="p-5 pt-6">
         <div className="flex items-start justify-between gap-3">
-          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <p className="text-[10px] font-bold uppercase tracking-[1.5px] text-muted-foreground">
             {label}
           </p>
           <div
             className={cn(
-              'flex h-9 w-9 items-center justify-center rounded-lg [&_svg]:h-4 [&_svg]:w-4',
-              TONE_RING[tone],
+              'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg [&_svg]:h-5 [&_svg]:w-5',
+              TINTA[tone],
             )}
           >
             {icon}
           </div>
         </div>
-        <div className="mt-4 min-h-[40px]">
+        <div className="mt-3 min-h-[40px]">
           {loading ? (
             <Skeleton className="h-9 w-32" />
           ) : (
-            <p className="text-3xl font-semibold tabular-nums tracking-tight text-foreground">
+            <p className="font-mono text-3xl font-extrabold leading-none tabular-nums tracking-tight text-foreground">
               {value}
             </p>
           )}

@@ -190,6 +190,22 @@
     line-height: 1.5;
     font-feature-settings: 'ss01' 1, 'cv11' 1;
     text-rendering: optimizeLegibility;
+    /* Grão sutil tipo asfalto — bolinhas 1px num grid 16px.
+     * Quase invisível, mas dá profundidade vs cor chapada. */
+    background-image: radial-gradient(
+      circle at 1px 1px,
+      rgba(0, 0, 0, 0.04) 1px,
+      transparent 0
+    );
+    background-size: 16px 16px;
+  }
+
+  .dark body {
+    background-image: radial-gradient(
+      circle at 1px 1px,
+      rgba(255, 255, 255, 0.025) 1px,
+      transparent 0
+    );
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -247,5 +263,25 @@
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  /* Tarja diagonal preto/amarelo — assinatura visual RODOPAV.
+   * Usada em: divisores de zona da sidebar, banners críticos, empty
+   * states, route progress bar. CSS-only (zero asset). */
+  .tarja-rodopav {
+    background: repeating-linear-gradient(
+      135deg,
+      #f59e0b 0 8px,
+      #0a0a0a 8px 16px
+    );
+  }
+
+  /* Sombra colorida amber no hover — dá impressão "isso é amarelo
+   * mesmo quando neutro". Sutil mas eficaz. */
+  .shadow-amb-hover {
+    @apply transition-shadow;
+  }
+  .shadow-amb-hover:hover {
+    box-shadow: 0 8px 24px -12px rgba(245, 158, 11, 0.25);
   }
 }
