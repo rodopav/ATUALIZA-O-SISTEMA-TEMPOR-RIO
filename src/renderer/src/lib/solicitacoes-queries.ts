@@ -25,6 +25,10 @@ export interface SolicitacaoSaldoRow {
   lancamento_gerado_id: string | null
   observacao_aprovacao: string | null
   data_compensacao_sugerida: string | null
+  /** True quando solicitação foi liberada pelo próprio solicitante sem admin. */
+  aprovada_em_ausencia: boolean
+  liberada_em_ausencia_em: string | null
+  liberada_em_ausencia_por: string | null
   created_at: string
   updated_at: string
   conta_destino: { apelido: string } | null
@@ -51,7 +55,9 @@ const SELECT_BASE = `
   id, solicitante_id, conta_destino_id, conta_origem_sugerida_id, valor,
   descricao, centro_custo_id, status, resolvida_em, resolvida_por,
   motivo_rejeicao, conta_origem_efetiva_id, lancamento_gerado_id,
-  observacao_aprovacao, data_compensacao_sugerida, created_at, updated_at,
+  observacao_aprovacao, data_compensacao_sugerida,
+  aprovada_em_ausencia, liberada_em_ausencia_em, liberada_em_ausencia_por,
+  created_at, updated_at,
   conta_destino:contas_bancarias!conta_destino_id(apelido),
   origem_sugerida:contas_bancarias!conta_origem_sugerida_id(apelido),
   origem_efetiva:contas_bancarias!conta_origem_efetiva_id(apelido),
@@ -300,6 +306,76 @@ export async function editarSolicitacao(
     throw new Error(
       'Não foi possível editar esta solicitação. Verifique se ela ainda está PENDENTE.',
     )
+  }
+}
+
+/**
+ * Solicitante libera próprio saldo sem admin. Cria o lançamento de
+ * transferência e marca solic como aprovada_em_ausencia=true.
+ * Backend valida: ser solicitante, status PENDENTE, ter conta_origem_sugerida.
+ * Retorna o id do lançamento gerado.
+ */
+export async function liberarSolicitacaoNaAusencia(
+  solicId: string,
+): Promise<string> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabase as any
+  const { data, error } = await sb.rpc('liberar_solicitacao_na_ausencia', {
+    p_solic_id: solicId,
+  })
+  if (error) throw error
+  return String(data)
+}
+
+export interface RevisarAusenciaResult {
+  acao: 'CONFIRMADA' | 'REPROVADA'
+  lancamentos_apagados: number
+}
+
+/**
+ * Admin revisa solicitação aprovada na ausência.
+ * - aprovar=true: remove flag, vira aprovação normal
+ * - aprovar=false: cascade DELETE do lançamento gerado + lançamentos
+ *   posteriores do mesmo solicitante saindo da conta beneficiada.
+ */
+export async function revisarSolicitacaoAusencia(
+  solicId: string,
+  aprovar: boolean,
+  motivo?: string | null,
+): Promise<RevisarAusenciaResult> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabase as any
+  const { data, error } = await sb.rpc('revisar_solicitacao_ausencia', {
+    p_solic_id: solicId,
+    p_aprovar: aprovar,
+    p_motivo: motivo ?? null,
+  })
+  if (error) throw error
+  return data as RevisarAusenciaResult
+}
+
+export interface CascadePreview {
+  qtd: number
+  total: number
+}
+
+/**
+ * Antes do admin reprovar, mostra quantos lançamentos serão apagados
+ * e o total em R$. UI exibe pra confirmação informada.
+ */
+export async function preverCascadeAusencia(
+  solicId: string,
+): Promise<CascadePreview> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sb = supabase as any
+  const { data, error } = await sb.rpc('prever_cascade_ausencia', {
+    p_solic_id: solicId,
+  })
+  if (error) throw error
+  const raw = data as { qtd: number | string; total: number | string }
+  return {
+    qtd: Number(raw?.qtd ?? 0),
+    total: Number(raw?.total ?? 0),
   }
 }
 

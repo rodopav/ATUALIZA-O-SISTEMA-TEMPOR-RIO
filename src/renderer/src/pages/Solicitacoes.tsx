@@ -9,6 +9,7 @@ import { DataTable } from '../components/ui/data-table'
 import { toast } from '../components/ui/use-toast'
 import { NovaSolicitacaoDialog } from '../components/solicitacoes/NovaSolicitacaoDialog'
 import { EditarSolicitacaoDialog } from '../components/solicitacoes/EditarSolicitacaoDialog'
+import { LiberarAusenciaDialog } from '../components/solicitacoes/LiberarAusenciaDialog'
 import { StatusFilter } from '../components/solicitacoes/StatusFilter'
 import { buildMinhasColumns } from '../components/solicitacoes/minhas-columns'
 import {
@@ -28,6 +29,9 @@ export function SolicitacoesPage(): React.ReactElement {
   const [editarTarget, setEditarTarget] =
     React.useState<SolicitacaoSaldoRow | null>(null)
   const [editarOpen, setEditarOpen] = React.useState(false)
+  const [ausenciaTarget, setAusenciaTarget] =
+    React.useState<SolicitacaoSaldoRow | null>(null)
+  const [ausenciaOpen, setAusenciaOpen] = React.useState(false)
   const [statusFilter, setStatusFilter] =
     React.useState<SolicitacaoStatus | null>(null)
 
@@ -69,14 +73,29 @@ export function SolicitacoesPage(): React.ReactElement {
     [],
   )
 
+  const handleLiberarAusencia = React.useCallback(
+    (row: SolicitacaoSaldoRow): void => {
+      setAusenciaTarget(row)
+      setAusenciaOpen(true)
+    },
+    [],
+  )
+
   const columns = React.useMemo(
     () =>
       buildMinhasColumns({
         onCancelar: handleCancelar,
         onEditar: handleEditar,
+        onLiberarAusencia: handleLiberarAusencia,
         cancelandoId: cancelarMut.isPending ? cancelarMut.variables ?? null : null,
       }),
-    [handleCancelar, handleEditar, cancelarMut.isPending, cancelarMut.variables],
+    [
+      handleCancelar,
+      handleEditar,
+      handleLiberarAusencia,
+      cancelarMut.isPending,
+      cancelarMut.variables,
+    ],
   )
 
   const data = minhasQ.data ?? []
@@ -138,6 +157,12 @@ export function SolicitacoesPage(): React.ReactElement {
         open={editarOpen}
         onOpenChange={setEditarOpen}
         solicitacao={editarTarget}
+      />
+
+      <LiberarAusenciaDialog
+        open={ausenciaOpen}
+        onOpenChange={setAusenciaOpen}
+        solicitacao={ausenciaTarget}
       />
     </div>
   )

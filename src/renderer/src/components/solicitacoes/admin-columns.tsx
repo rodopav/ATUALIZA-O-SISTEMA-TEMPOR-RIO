@@ -1,6 +1,7 @@
 import * as React from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
-import { CheckCircle2, XCircle } from 'lucide-react'
+import { CheckCircle2, XCircle, ShieldAlert } from 'lucide-react'
+import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { formatBRL, formatDate } from '../../lib/format'
 import { StatusBadge } from './StatusBadge'
@@ -77,8 +78,25 @@ export function buildAdminColumns(
     {
       accessorKey: 'status',
       header: 'Status',
-      cell: (ctx) => <StatusBadge status={ctx.row.original.status} />,
-      size: 130,
+      cell: (ctx) => {
+        const row = ctx.row.original
+        return (
+          <div className="flex flex-col items-start gap-1">
+            <StatusBadge status={row.status} />
+            {row.aprovada_em_ausencia ? (
+              <Badge
+                variant="outline"
+                className="border-amb-400/50 bg-amb-400/10 text-[9px] uppercase tracking-wider text-amb-600 dark:text-amb-400"
+                title="Solicitante liberou na ausência. Revise!"
+              >
+                <ShieldAlert className="h-3 w-3" />
+                Liberada em ausência · revisar
+              </Badge>
+            ) : null}
+          </div>
+        )
+      },
+      size: 180,
     },
     {
       id: 'acoes',

@@ -9,6 +9,7 @@ import { StatCard } from '../components/dashboards/StatCard'
 import { StatusFilter } from '../components/solicitacoes/StatusFilter'
 import { buildAdminColumns } from '../components/solicitacoes/admin-columns'
 import { AprovarSolicitacaoDialog } from '../components/solicitacoes/AprovarSolicitacaoDialog'
+import { RevisarAusenciaDialog } from '../components/solicitacoes/RevisarAusenciaDialog'
 import { RejeitarSolicitacaoDialog } from '../components/solicitacoes/RejeitarSolicitacaoDialog'
 import {
   adminKpisQuery,
@@ -27,12 +28,22 @@ export function AdminSolicitacoesPage(): React.ReactElement {
   const [rejeitarTarget, setRejeitarTarget] =
     React.useState<AdminSolicitacaoSaldoRow | null>(null)
   const [rejeitarOpen, setRejeitarOpen] = React.useState(false)
+  const [revisarTarget, setRevisarTarget] =
+    React.useState<AdminSolicitacaoSaldoRow | null>(null)
+  const [revisarOpen, setRevisarOpen] = React.useState(false)
 
   const listQ = useQuery(adminSolicitacoesQuery(statusFilter))
   const kpisQ = useQuery(adminKpisQuery)
 
   const handleAprovar = React.useCallback(
     (row: AdminSolicitacaoSaldoRow): void => {
+      // Se solic foi liberada na ausência, abre o dialog de revisão
+      // (confirmar / reprovar com cascade). Senão, fluxo normal.
+      if (row.aprovada_em_ausencia) {
+        setRevisarTarget(row)
+        setRevisarOpen(true)
+        return
+      }
       setAprovarTarget(row)
       setAprovarOpen(true)
     },
@@ -137,6 +148,11 @@ export function AdminSolicitacoesPage(): React.ReactElement {
         open={aprovarOpen}
         onOpenChange={setAprovarOpen}
         solicitacao={aprovarTarget}
+      />
+      <RevisarAusenciaDialog
+        open={revisarOpen}
+        onOpenChange={setRevisarOpen}
+        solicitacao={revisarTarget}
       />
       <RejeitarSolicitacaoDialog
         open={rejeitarOpen}
