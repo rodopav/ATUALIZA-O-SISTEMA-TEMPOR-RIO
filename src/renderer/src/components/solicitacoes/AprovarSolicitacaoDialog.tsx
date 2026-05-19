@@ -139,6 +139,7 @@ export function AprovarSolicitacaoDialog({
   const saldoInsuficiente =
     !!contaOrigemSelecionada &&
     contaOrigemSelecionada.tipo !== 'CARTAO_CREDITO_CONTA' &&
+    contaOrigemSelecionada.saldo_atual !== null &&
     contaOrigemSelecionada.saldo_atual < solicitacao.valor
 
   return (

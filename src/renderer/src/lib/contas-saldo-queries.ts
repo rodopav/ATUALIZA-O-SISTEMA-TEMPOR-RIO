@@ -25,8 +25,47 @@ export interface ContaSaldo {
   empresa_id: string | null
   empresa: string | null
   ativo: boolean
-  saldo_atual: number
+  /** null quando o usuário não pode ver saldo (sugestão de origem). */
+  saldo_atual: number | null
 }
+
+/**
+ * Lista TODAS as contas ativas pra USAR como "sugestão de origem" em
+ * solicitação de saldo. Usa o lookup público (v_contas_lookup, bypass
+ * RLS apenas pra apelido + flags), porque o usuário comum precisa
+ * sugerir uma conta mesmo sem ter permissão de ver saldo dela.
+ *
+ * O saldo é `null` propositalmente — não é mostrado no selector.
+ */
+export const contasParaSugestaoQuery = queryOptions({
+  queryKey: ['catalog', 'contas-sugestao'] as const,
+  queryFn: async (): Promise<ContaSaldo[]> => {
+    const { data, error } = await supabase
+      .from('v_contas_lookup')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .select('id, apelido, is_caixa_fisico' as any)
+    if (error) throw error
+    const rows = (data ?? []) as unknown as Array<{
+      id: string
+      apelido: string
+      is_caixa_fisico: boolean | null
+    }>
+    return rows
+      .filter((r) => r.id && r.apelido)
+      .map<ContaSaldo>((r) => ({
+        conta_id: r.id,
+        apelido: r.apelido,
+        tipo: 'CORRENTE',
+        banco: null,
+        numero: null,
+        empresa_id: null,
+        empresa: null,
+        ativo: true,
+        saldo_atual: null,
+      }))
+  },
+  staleTime: 1000 * 60 * 5,
+})
 
 function normalize(row: ContaSaldoRow): ContaSaldo | null {
   // A view sempre traz valores; o tipo gerado é defensivo (`| null`).

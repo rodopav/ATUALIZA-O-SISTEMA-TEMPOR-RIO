@@ -85,6 +85,7 @@ export function ContaSelectors({
     origemConta.tipo !== 'CARTAO_CREDITO_CONTA' &&
     typeof valor === 'number' &&
     valor > 0 &&
+    origemConta.saldo_atual !== null &&
     valor > origemConta.saldo_atual &&
     (natureza === 'SAIDA' || isTransferencia)
 

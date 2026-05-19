@@ -19,6 +19,7 @@ import { mapError } from '../../lib/error-mapper'
 import { toast } from '../ui/use-toast'
 import {
   contasSaldoQuery,
+  contasParaSugestaoQuery,
   type ContaSaldo,
 } from '../../lib/contas-saldo-queries'
 import { centrosCustoQuery } from '../../lib/queries'
@@ -76,6 +77,7 @@ export function EditarSolicitacaoDialog({
   })
 
   const contasQ = useQuery(contasSaldoQuery)
+  const contasSugestaoQ = useQuery(contasParaSugestaoQuery)
   const centrosQ = useQuery(centrosCustoQuery)
   const permissoesQ = useQuery(permissoesByUserQuery(profile?.id ?? null))
 
@@ -91,7 +93,9 @@ export function EditarSolicitacaoDialog({
     return todasContas.filter((c) => allowed.has(c.conta_id))
   }, [isAdmin, todasContas, permissoes])
 
-  const contasOrigemSugerida = todasContas
+  // Origem sugerida usa lookup público (todas as contas ativas, sem
+  // saldo) — usuário precisa sugerir mesmo sem permissão de ver a conta.
+  const contasOrigemSugerida = contasSugestaoQ.data ?? todasContas
 
   // Reset com valores da solicitação ao abrir
   React.useEffect(() => {

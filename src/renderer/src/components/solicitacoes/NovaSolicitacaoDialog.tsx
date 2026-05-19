@@ -19,6 +19,7 @@ import { mapError } from '../../lib/error-mapper'
 import { toast } from '../ui/use-toast'
 import {
   contasSaldoQuery,
+  contasParaSugestaoQuery,
   type ContaSaldo,
 } from '../../lib/contas-saldo-queries'
 import { centrosCustoQuery } from '../../lib/queries'
@@ -75,6 +76,7 @@ export function NovaSolicitacaoDialog({
   })
 
   const contasQ = useQuery(contasSaldoQuery)
+  const contasSugestaoQ = useQuery(contasParaSugestaoQuery)
   const centrosQ = useQuery(centrosCustoQuery)
   const permissoesQ = useQuery(permissoesByUserQuery(profile?.id ?? null))
 
@@ -93,9 +95,11 @@ export function NovaSolicitacaoDialog({
     return todasContas.filter((c) => allowed.has(c.conta_id))
   }, [isAdmin, todasContas, permissoes])
 
-  // A view `v_contas_saldo` já aplica RLS de pode_ver — todasContas aqui só
-  // contém o que o usuário pode ver, então usamos diretamente como sugestões.
-  const contasOrigemSugerida = todasContas
+  // Origem sugerida: o usuário precisa indicar de qual conta o admin
+  // (ou ele próprio em liberação na ausência) deve tirar o saldo —
+  // mesmo que ele não tenha permissão de VER aquela conta. Usamos o
+  // lookup público (apelido apenas, sem saldo).
+  const contasOrigemSugerida = contasSugestaoQ.data ?? todasContas
 
   React.useEffect(() => {
     if (!open) {
