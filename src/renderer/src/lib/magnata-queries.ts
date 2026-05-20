@@ -205,3 +205,64 @@ export const contasSaldoMagnataQuery = queryOptions({
   },
   staleTime: STALE_30S,
 })
+
+/* ===================== KPIs Executivos ===================== */
+
+/**
+ * Indicadores estratégicos do grupo — CFO view.
+ * Retornados pela RPC magnata_kpis_executivos.
+ */
+export interface MagnataKpisExecutivos {
+  saldo_geral: number
+  saldo_contas: number
+  saldo_caixa_fisico: number
+  limite_total_configurado: number
+  limite_total_disponivel: number
+  limite_consumido: number
+  pct_limite_consumido: number
+  tarifas_mes_valor: number
+  tarifas_mes_count: number
+  usou_limite_mes_count: number
+  contas_negativas_count: number
+  liquidez_imediata: number
+  runway_meses: number | null
+  saldo_variacao_pct: number
+  solicitacoes_pendentes_count: number
+  solicitacoes_ausencia_pendentes_count: number
+}
+
+function parseKpisExecutivos(raw: unknown): MagnataKpisExecutivos {
+  const r = (raw ?? {}) as Record<string, unknown>
+  return {
+    saldo_geral: pickNum(r.saldo_geral),
+    saldo_contas: pickNum(r.saldo_contas),
+    saldo_caixa_fisico: pickNum(r.saldo_caixa_fisico),
+    limite_total_configurado: pickNum(r.limite_total_configurado),
+    limite_total_disponivel: pickNum(r.limite_total_disponivel),
+    limite_consumido: pickNum(r.limite_consumido),
+    pct_limite_consumido: pickNum(r.pct_limite_consumido),
+    tarifas_mes_valor: pickNum(r.tarifas_mes_valor),
+    tarifas_mes_count: pickNum(r.tarifas_mes_count),
+    usou_limite_mes_count: pickNum(r.usou_limite_mes_count),
+    contas_negativas_count: pickNum(r.contas_negativas_count),
+    liquidez_imediata: pickNum(r.liquidez_imediata),
+    runway_meses: pickNullableNum(r.runway_meses),
+    saldo_variacao_pct: pickNum(r.saldo_variacao_pct),
+    solicitacoes_pendentes_count: pickNum(r.solicitacoes_pendentes_count),
+    solicitacoes_ausencia_pendentes_count: pickNum(
+      r.solicitacoes_ausencia_pendentes_count,
+    ),
+  }
+}
+
+export const kpisExecutivosQuery = queryOptions({
+  queryKey: ['magnata', 'kpis-executivos'] as const,
+  queryFn: async (): Promise<MagnataKpisExecutivos> => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sb = supabase as any
+    const { data, error } = await sb.rpc('magnata_kpis_executivos')
+    if (error) throw error
+    return parseKpisExecutivos(data)
+  },
+  staleTime: STALE_30S,
+})
