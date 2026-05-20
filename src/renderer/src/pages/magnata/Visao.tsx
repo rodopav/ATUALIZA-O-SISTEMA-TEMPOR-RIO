@@ -18,6 +18,8 @@ import { AlertasBanner } from '../../components/magnata/AlertasBanner'
 import { MagnataKpiGrid } from '../../components/magnata/MagnataKpiGrid'
 import { EvolucaoSaldoChart } from '../../components/magnata/EvolucaoSaldoChart'
 import { TipoContaPieChart } from '../../components/magnata/TipoContaPieChart'
+import { SaldosConsolidadosCards } from '../../components/dashboards/SaldosConsolidadosCards'
+import { LimitesPorContaSection } from '../../components/dashboards/LimitesPorContaSection'
 import {
   alertasQuery,
   contasSaldoMagnataQuery,
@@ -57,6 +59,13 @@ export function MagnataVisaoPage(): React.ReactElement {
       {alertasQ.data && alertasQ.data.length > 0 ? (
         <AlertasBanner alertas={alertasQ.data} />
       ) : null}
+
+      {/* Mesmos cards que o app financeiro: Contas / Caixa físico /
+          Saldo Geral / Limite disponível. Frank: "quero que todas as
+          informações estejam no Magnata também". */}
+      <SaldosConsolidadosCards />
+
+      <LimitesPorContaSection />
 
       <MagnataKpiGrid
         kpis={kpisQ.data}
