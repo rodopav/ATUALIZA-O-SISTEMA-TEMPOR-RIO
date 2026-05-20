@@ -429,10 +429,13 @@ function SaudeEmpresasList({
       const fim = new Date(dt.getFullYear(), dt.getMonth() + 1, 0)
       const fimStr = `${fim.getFullYear()}-${String(fim.getMonth() + 1).padStart(2, '0')}-${String(fim.getDate()).padStart(2, '0')}`
       // Lançamento → conta_origem/destino → empresa_id (FK em contas_bancarias).
+      // Trazendo tipo.is_transferencia pra excluir transferências internas
+      // dos totais de entrada/saída (igual app financeiro).
       const { data, error } = await supabase
         .from('lancamentos')
         .select(
           `valor, natureza,
+           tipo:tipos_operacao(is_transferencia),
            origem:contas_bancarias!lancamentos_conta_origem_id_fkey(empresa_id),
            destino:contas_bancarias!lancamentos_conta_destino_id_fkey(empresa_id)`,
         )
@@ -441,19 +444,20 @@ function SaudeEmpresasList({
       if (error) throw error
       const rows = (data ?? []) as unknown as Array<{
         valor: number
-        natureza: 'ENTRADA' | 'SAIDA' | 'TRANSFERENCIA'
+        natureza: 'ENTRADA' | 'SAIDA'
+        tipo: { is_transferencia: boolean } | null
         origem: { empresa_id: string | null } | null
         destino: { empresa_id: string | null } | null
       }>
       const map = new Map<string, { entradas: number; saidas: number }>()
       for (const r of rows) {
-        // Para SAIDA usa origem; para ENTRADA usa destino; para TRANSFERENCIA pula.
+        // Pula transferências internas — não são operacionais.
+        if (r.tipo?.is_transferencia) continue
+        // SAIDA usa empresa da origem; ENTRADA usa empresa do destino.
         const empresaId =
           r.natureza === 'SAIDA'
             ? r.origem?.empresa_id
-            : r.natureza === 'ENTRADA'
-              ? r.destino?.empresa_id ?? r.origem?.empresa_id
-              : null
+            : r.destino?.empresa_id ?? r.origem?.empresa_id
         if (!empresaId) continue
         const cur = map.get(empresaId) ?? { entradas: 0, saidas: 0 }
         const v = Number(r.valor ?? 0)

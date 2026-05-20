@@ -41,8 +41,14 @@ interface MagnataLancamento {
   data: string
   descricao: string
   valor: number
-  natureza: 'ENTRADA' | 'SAIDA' | 'TRANSFERENCIA'
+  /** Natureza do enum no banco: só ENTRADA ou SAIDA. */
+  natureza: 'ENTRADA' | 'SAIDA'
+  /** Flag do tipo_operacao — quando true, lançamento é transferência interna. */
+  is_transferencia: boolean
+  /** Linha original estornada (motivo_estorno preenchido). Visual: opacity. */
   estornado: boolean
+  /** Contra-lançamento gerado por um estorno (estorno_de_id != null).
+   * Visual: fundo amarelo. Totais: NÃO conta (já cancelou o original). */
   is_estorno: boolean
   conciliado_em: string | null
   responsavel_id: string
@@ -97,10 +103,14 @@ function buildLancamentosQuery(filters: FilterState) {
   return queryOptions({
     queryKey: ['magnata', 'lancamentos_drill', filters] as const,
     queryFn: async (): Promise<MagnataLancamento[]> => {
+      // SEMPRE busca sem filtro de natureza no backend — Transferência
+      // não é valor do enum natureza, é flag em tipos_operacao. Filtro
+      // aplicado client-side abaixo.
       let q = supabase
         .from('lancamentos')
         .select(
           `id, data, descricao, valor, natureza, motivo_estorno, estorno_de_id, conciliado_em, responsavel_id,
+           tipo:tipos_operacao(is_transferencia),
            responsavel:profiles!lancamentos_responsavel_id_profiles_fkey(nome_completo),
            origem:contas_bancarias!lancamentos_conta_origem_id_fkey(apelido, empresa:empresas(razao_social, nome_fantasia)),
            destino:contas_bancarias!lancamentos_conta_destino_id_fkey(apelido, empresa:empresas(razao_social, nome_fantasia)),
@@ -115,11 +125,6 @@ function buildLancamentosQuery(filters: FilterState) {
         .limit(500)
 
       if (filters.responsavelId) q = q.eq('responsavel_id', filters.responsavelId)
-      if (filters.natureza !== 'all') {
-        // O enum natureza_lancamento aceita TRANSFERENCIA mas o tipo gerado
-        // restringe — cast para o overload genérico do .eq
-        q = q.eq('natureza', filters.natureza as 'ENTRADA' | 'SAIDA')
-      }
 
       const { data, error } = await q
       if (error) throw error
@@ -133,12 +138,13 @@ function buildLancamentosQuery(filters: FilterState) {
         data: string
         descricao: string
         valor: number | string
-        natureza: 'ENTRADA' | 'SAIDA' | 'TRANSFERENCIA'
+        natureza: 'ENTRADA' | 'SAIDA'
         motivo_estorno: string | null
         estorno_de_id: string | null
         conciliado_em: string | null
         responsavel_id: string
         fornecedor_cliente_texto: string | null
+        tipo: { is_transferencia: boolean } | null
         responsavel: { nome_completo: string } | null
         origem: ContaEmbed
         destino: ContaEmbed
@@ -148,8 +154,6 @@ function buildLancamentosQuery(filters: FilterState) {
       const raw = (data ?? []) as unknown as RawLanc[]
 
       const rows = raw.map((r): MagnataLancamento => {
-        // Empresa vem da conta (origem prioritária; fallback destino para
-        // lançamentos sem origem como ENTRADA pura).
         const contaParaEmpresa = r.origem ?? r.destino
         const empresa = contaParaEmpresa?.empresa
           ? (contaParaEmpresa.empresa.nome_fantasia ??
@@ -161,6 +165,7 @@ function buildLancamentosQuery(filters: FilterState) {
           descricao: r.descricao,
           valor: Number(r.valor),
           natureza: r.natureza,
+          is_transferencia: Boolean(r.tipo?.is_transferencia),
           estornado: r.motivo_estorno !== null,
           is_estorno: r.estorno_de_id !== null,
           conciliado_em: r.conciliado_em,
@@ -175,9 +180,31 @@ function buildLancamentosQuery(filters: FilterState) {
         }
       })
 
+      // Filtro de natureza aplicado AQUI (não no banco):
+      //  • TRANSFERENCIA → só is_transferencia=true
+      //  • ENTRADA → natureza=ENTRADA E is_transferencia=false (exclui interna)
+      //  • SAIDA   → natureza=SAIDA   E is_transferencia=false
+      //  • all     → tudo
+      // Pra transferências evita dedup: pega só a perna ENTRADA (destino)
+      // pra não contar a operação 2x. (Mesma lógica do v_movimentos.)
+      let filtered = rows
+      if (filters.natureza === 'TRANSFERENCIA') {
+        filtered = rows.filter(
+          (r) => r.is_transferencia && r.natureza === 'ENTRADA',
+        )
+      } else if (filters.natureza === 'ENTRADA') {
+        filtered = rows.filter(
+          (r) => r.natureza === 'ENTRADA' && !r.is_transferencia,
+        )
+      } else if (filters.natureza === 'SAIDA') {
+        filtered = rows.filter(
+          (r) => r.natureza === 'SAIDA' && !r.is_transferencia,
+        )
+      }
+
       if (filters.busca.trim()) {
         const needle = filters.busca.trim().toLowerCase()
-        return rows.filter((row) =>
+        return filtered.filter((row) =>
           [
             row.descricao,
             row.responsavel_nome,
@@ -192,7 +219,7 @@ function buildLancamentosQuery(filters: FilterState) {
             .some((s) => s!.toLowerCase().includes(needle)),
         )
       }
-      return rows
+      return filtered
     },
     staleTime: 30_000,
   })
@@ -218,13 +245,24 @@ export function MagnataLancamentosPage(): React.ReactElement {
     let entradas = 0
     let saidas = 0
     let transferencias = 0
+    let count = 0
+    // MESMA LÓGICA DO FINANCEIRO (SaldoStickyBar):
+    //   - Pula contra-lançamentos (is_estorno = estorno_de_id != null), pois
+    //     já cancelam o original — somá-los inverteria o sinal.
+    //   - Transferências internas: single-row natureza ENTRADA → soma só essa
+    //     perna em `transferencias`, NÃO entra em entradas/saídas operacionais.
+    //   - Count usa o MESMO filtro dos totais (consistência visual).
     for (const l of list) {
-      if (l.estornado) continue
+      if (l.is_estorno) continue
+      count += 1
+      if (l.is_transferencia) {
+        if (l.natureza === 'ENTRADA') transferencias += l.valor
+        continue
+      }
       if (l.natureza === 'ENTRADA') entradas += l.valor
       else if (l.natureza === 'SAIDA') saidas += l.valor
-      else if (l.natureza === 'TRANSFERENCIA') transferencias += l.valor
     }
-    return { entradas, saidas, transferencias, count: list.length }
+    return { entradas, saidas, transferencias, count }
   }, [lancQ.data])
 
   const update = (patch: Partial<FilterState>): void =>
@@ -451,16 +489,16 @@ function LancamentoRow({
 }: {
   row: MagnataLancamento
 }): React.ReactElement {
-  const naturezaColor =
-    row.natureza === 'ENTRADA'
+  // Transferência interna: azul (informativo, não conta como receita/despesa)
+  // Entrada operacional: verde · Saída operacional: vermelho
+  const naturezaColor = row.is_transferencia
+    ? 'text-blu-600'
+    : row.natureza === 'ENTRADA'
       ? 'text-success'
-      : row.natureza === 'SAIDA'
-        ? 'text-destructive'
-        : 'text-blu-600'
-  const conta =
-    row.natureza === 'TRANSFERENCIA'
-      ? `${row.conta_origem_apelido ?? '—'} → ${row.conta_destino_apelido ?? '—'}`
-      : (row.conta_origem_apelido ?? row.conta_destino_apelido ?? '—')
+      : 'text-destructive'
+  const conta = row.is_transferencia
+    ? `${row.conta_origem_apelido ?? '—'} → ${row.conta_destino_apelido ?? '—'}`
+    : (row.conta_origem_apelido ?? row.conta_destino_apelido ?? '—')
   return (
     <tr className="border-t hover:bg-muted/20">
       <td className="px-3 py-2 tabular-nums text-xs">
@@ -472,15 +510,25 @@ function LancamentoRow({
       </td>
       <td className="px-3 py-2">
         <p className="line-clamp-1 max-w-md text-sm">{row.descricao}</p>
-        {row.fornecedor_nome || row.fornecedor_texto ? (
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-            {row.fornecedor_nome ?? row.fornecedor_texto}
-          </p>
-        ) : null}
+        <div className="flex items-center gap-1.5">
+          {row.is_transferencia ? (
+            <Badge
+              variant="outline"
+              className="border-blu-600/40 bg-blu-50 text-[9px] uppercase tracking-wider text-blu-600 dark:bg-blu-600/10"
+            >
+              Transferência
+            </Badge>
+          ) : null}
+          {row.fornecedor_nome || row.fornecedor_texto ? (
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              {row.fornecedor_nome ?? row.fornecedor_texto}
+            </p>
+          ) : null}
+        </div>
       </td>
       <td className="px-3 py-2 text-xs text-muted-foreground">{conta}</td>
       <td className={cn('px-3 py-2 text-right font-semibold tabular-nums', naturezaColor)}>
-        {row.natureza === 'SAIDA' ? '−' : ''}
+        {!row.is_transferencia && row.natureza === 'SAIDA' ? '−' : ''}
         {formatBRL(row.valor)}
       </td>
       <td className="px-3 py-2">
