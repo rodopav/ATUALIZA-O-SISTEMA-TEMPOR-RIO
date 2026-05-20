@@ -118,12 +118,15 @@ function buildLancamentosQuery(filters: FilterState) {
            fornecedor_cliente_texto,
            centro:centros_de_custo(codigo)`,
         )
-        .gte('data', filters.inicio)
-        .lte('data', filters.fim)
         .order('data', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(500)
 
+      // Datas vazias NÃO podem ir pra `.gte/.lte` — Postgres rejeita
+      // string '' com "invalid input syntax for type date". Aplicar
+      // condicional: se filtro estiver preenchido, restringe; senão, ignora.
+      if (filters.inicio) q = q.gte('data', filters.inicio)
+      if (filters.fim) q = q.lte('data', filters.fim)
       if (filters.responsavelId) q = q.eq('responsavel_id', filters.responsavelId)
 
       const { data, error } = await q
@@ -180,18 +183,17 @@ function buildLancamentosQuery(filters: FilterState) {
         }
       })
 
-      // Filtro de natureza aplicado AQUI (não no banco):
-      //  • TRANSFERENCIA → só is_transferencia=true
-      //  • ENTRADA → natureza=ENTRADA E is_transferencia=false (exclui interna)
-      //  • SAIDA   → natureza=SAIDA   E is_transferencia=false
+      // Filtro de natureza aplicado AQUI (não no banco — enum não tem 'TRANSFERENCIA'):
+      //  • TRANSFERENCIA → is_transferencia=true (uma linha, sempre natureza=SAIDA)
+      //  • ENTRADA → natureza=ENTRADA E is_transferencia=false (só receita real)
+      //  • SAIDA   → natureza=SAIDA   E is_transferencia=false (só despesa real)
       //  • all     → tudo
-      // Pra transferências evita dedup: pega só a perna ENTRADA (destino)
-      // pra não contar a operação 2x. (Mesma lógica do v_movimentos.)
+      // Modelagem: transferência interna é SINGLE-ROW, natureza='SAIDA',
+      // com conta_origem_id (de onde sai) E conta_destino_id (pra onde vai).
+      // Nada duplica — destino recebe via referência, não via novo registro.
       let filtered = rows
       if (filters.natureza === 'TRANSFERENCIA') {
-        filtered = rows.filter(
-          (r) => r.is_transferencia && r.natureza === 'ENTRADA',
-        )
+        filtered = rows.filter((r) => r.is_transferencia)
       } else if (filters.natureza === 'ENTRADA') {
         filtered = rows.filter(
           (r) => r.natureza === 'ENTRADA' && !r.is_transferencia,
@@ -246,17 +248,20 @@ export function MagnataLancamentosPage(): React.ReactElement {
     let saidas = 0
     let transferencias = 0
     let count = 0
-    // MESMA LÓGICA DO FINANCEIRO (SaldoStickyBar):
-    //   - Pula contra-lançamentos (is_estorno = estorno_de_id != null), pois
-    //     já cancelam o original — somá-los inverteria o sinal.
-    //   - Transferências internas: single-row natureza ENTRADA → soma só essa
-    //     perna em `transferencias`, NÃO entra em entradas/saídas operacionais.
+    // Lógica:
+    //   - Pula contra-lançamentos (is_estorno = estorno_de_id != null) — eles
+    //     já cancelam o original; somá-los inverteria o sinal.
+    //   - Transferências internas: single-row natureza='SAIDA' com origem+destino.
+    //     Soma em `transferencias` independente da natureza (sempre é SAIDA na
+    //     prática). NÃO entra em entradas/saídas operacionais (CFO precisa ver
+    //     receita/despesa real separada de movimento entre contas próprias).
+    //   - ENTRADA e SAIDA operacionais: só quando NÃO is_transferencia.
     //   - Count usa o MESMO filtro dos totais (consistência visual).
     for (const l of list) {
       if (l.is_estorno) continue
       count += 1
       if (l.is_transferencia) {
-        if (l.natureza === 'ENTRADA') transferencias += l.valor
+        transferencias += l.valor
         continue
       }
       if (l.natureza === 'ENTRADA') entradas += l.valor
