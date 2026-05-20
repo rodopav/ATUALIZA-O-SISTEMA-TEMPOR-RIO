@@ -226,6 +226,11 @@ export interface MagnataKpisExecutivos {
   contas_negativas_count: number
   liquidez_imediata: number
   runway_meses: number | null
+  /** Quantidade de dias distintos com saída na janela de 90 dias.
+   * < 14 → confiança baixa pro runway. */
+  runway_dias_historico: number
+  runway_saidas_90d: number
+  runway_media_diaria: number
   saldo_variacao_pct: number
   solicitacoes_pendentes_count: number
   solicitacoes_ausencia_pendentes_count: number
@@ -247,6 +252,9 @@ function parseKpisExecutivos(raw: unknown): MagnataKpisExecutivos {
     contas_negativas_count: pickNum(r.contas_negativas_count),
     liquidez_imediata: pickNum(r.liquidez_imediata),
     runway_meses: pickNullableNum(r.runway_meses),
+    runway_dias_historico: pickNum(r.runway_dias_historico),
+    runway_saidas_90d: pickNum(r.runway_saidas_90d),
+    runway_media_diaria: pickNum(r.runway_media_diaria),
     saldo_variacao_pct: pickNum(r.saldo_variacao_pct),
     solicitacoes_pendentes_count: pickNum(r.solicitacoes_pendentes_count),
     solicitacoes_ausencia_pendentes_count: pickNum(
@@ -263,6 +271,112 @@ export const kpisExecutivosQuery = queryOptions({
     const { data, error } = await sb.rpc('magnata_kpis_executivos')
     if (error) throw error
     return parseKpisExecutivos(data)
+  },
+  staleTime: STALE_30S,
+})
+
+/* ===================== Drill-downs ===================== */
+
+export interface DrillTarifa {
+  lancamento_id: string
+  data: string
+  descricao: string
+  valor: number
+  conta_apelido: string
+  tipo_operacao: string | null
+}
+
+export const drillTarifasMesQuery = queryOptions({
+  queryKey: ['magnata', 'drill', 'tarifas-mes'] as const,
+  queryFn: async (): Promise<DrillTarifa[]> => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sb = supabase as any
+    const { data, error } = await sb.rpc('magnata_drill_tarifas_mes')
+    if (error) throw error
+    return ((data ?? []) as DrillTarifa[]).map((r) => ({
+      ...r,
+      valor: pickNum(r.valor),
+    }))
+  },
+  staleTime: STALE_30S,
+})
+
+export interface DrillContaNegativa {
+  conta_id: string
+  apelido: string
+  banco: string | null
+  empresa: string | null
+  saldo_atual: number
+  tem_limite: boolean
+  limite_disponivel: number | null
+}
+
+export const drillContasNegativasQuery = queryOptions({
+  queryKey: ['magnata', 'drill', 'contas-negativas'] as const,
+  queryFn: async (): Promise<DrillContaNegativa[]> => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sb = supabase as any
+    const { data, error } = await sb.rpc('magnata_drill_contas_negativas')
+    if (error) throw error
+    return ((data ?? []) as DrillContaNegativa[]).map((r) => ({
+      ...r,
+      saldo_atual: pickNum(r.saldo_atual),
+      limite_disponivel: pickNullableNum(r.limite_disponivel),
+    }))
+  },
+  staleTime: STALE_30S,
+})
+
+export interface DrillAusencia {
+  solicitacao_id: string
+  solicitante: string
+  descricao: string
+  valor: number
+  conta_destino: string | null
+  conta_origem_efetiva: string | null
+  liberada_em: string
+  horas_aguardando: number
+}
+
+export const drillAusenciaPendentesQuery = queryOptions({
+  queryKey: ['magnata', 'drill', 'ausencia-pendentes'] as const,
+  queryFn: async (): Promise<DrillAusencia[]> => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sb = supabase as any
+    const { data, error } = await sb.rpc('magnata_drill_ausencia_pendentes')
+    if (error) throw error
+    return ((data ?? []) as DrillAusencia[]).map((r) => ({
+      ...r,
+      valor: pickNum(r.valor),
+      horas_aguardando: pickNum(r.horas_aguardando),
+    }))
+  },
+  staleTime: STALE_30S,
+})
+
+export interface DrillMovimento {
+  lancamento_id: string
+  data: string
+  descricao: string
+  valor: number
+  natureza: string
+  conta_apelido: string
+  is_transferencia: boolean
+}
+
+export const drillMovimentosMesQuery = queryOptions({
+  queryKey: ['magnata', 'drill', 'movimentos-mes'] as const,
+  queryFn: async (): Promise<DrillMovimento[]> => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sb = supabase as any
+    const { data, error } = await sb.rpc('magnata_drill_movimentos_mes', {
+      p_limit: 10,
+    })
+    if (error) throw error
+    return ((data ?? []) as DrillMovimento[]).map((r) => ({
+      ...r,
+      valor: pickNum(r.valor),
+    }))
   },
   staleTime: STALE_30S,
 })

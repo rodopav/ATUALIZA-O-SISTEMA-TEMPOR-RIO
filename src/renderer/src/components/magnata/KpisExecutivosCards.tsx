@@ -11,6 +11,7 @@ import {
   ShieldAlert,
   HelpCircle,
   ArrowDown,
+  MousePointerClick,
 } from 'lucide-react'
 import { Card, CardContent } from '../ui/card'
 import { Skeleton } from '../ui/skeleton'
@@ -23,6 +24,7 @@ import {
 import { kpisExecutivosQuery } from '../../lib/magnata-queries'
 import { formatBRL } from '../../lib/format'
 import { cn } from '../../lib/cn'
+import { KpiDrillDownDialog, type DrillKind } from './KpiDrillDownDialog'
 
 type Tom = 'default' | 'success' | 'warning' | 'destructive'
 
@@ -35,6 +37,8 @@ interface KpiHumanoProps {
   hint?: React.ReactNode
   tom?: Tom
   loading?: boolean
+  /** Click no card abre o drill-down dialog. */
+  onClick?: () => void
 }
 
 const STRIP: Record<Tom, string> = {
@@ -64,16 +68,38 @@ function KpiHumano({
   hint,
   tom = 'default',
   loading,
+  onClick,
 }: KpiHumanoProps): React.ReactElement {
+  const clickable = Boolean(onClick)
   return (
     <Card
+      onClick={onClick}
+      onKeyDown={
+        clickable
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onClick?.()
+              }
+            }
+          : undefined
+      }
+      tabIndex={clickable ? 0 : undefined}
+      role={clickable ? 'button' : undefined}
       className={cn(
         'group relative overflow-hidden transition-all duration-200',
         'hover:-translate-y-0.5 hover:border-amb-400/40',
         'hover:shadow-[0_8px_24px_-12px_rgba(245,158,11,0.25)]',
+        clickable && 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amb-400/60',
       )}
     >
       <div aria-hidden className={cn('absolute inset-x-0 top-0 h-[3px]', STRIP[tom])} />
+      {clickable ? (
+        <MousePointerClick
+          aria-hidden
+          className="absolute right-2 top-2 h-3 w-3 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-60"
+        />
+      ) : null}
       <CardContent className="p-4 pt-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-1.5">
@@ -138,8 +164,15 @@ export function KpisExecutivosCards(): React.ReactElement {
   const k = q.data
   const loading = q.isLoading
   const variacao = k?.saldo_variacao_pct ?? 0
+  const [drillKind, setDrillKind] = React.useState<DrillKind | null>(null)
+  const [drillOpen, setDrillOpen] = React.useState(false)
+  const abrirDrill = (kind: DrillKind): void => {
+    setDrillKind(kind)
+    setDrillOpen(true)
+  }
 
   return (
+    <>
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {/* PULSO DO MÊS */}
       <KpiHumano
@@ -156,26 +189,40 @@ export function KpisExecutivosCards(): React.ReactElement {
           </span>
         }
         hint={variacao >= 0 ? 'Caixa subiu no mês' : 'Caixa caiu no mês'}
+        onClick={() => abrirDrill('variacao_mes')}
       />
 
       <KpiHumano
         label="Fôlego do caixa"
-        explica="Quantos meses o caixa atual aguenta no ritmo atual de gastos (saldo geral ÷ média de saídas dos últimos 3 meses)."
+        explica={
+          'Quantos meses o caixa atual aguenta no ritmo de gastos dos últimos 90 dias. Precisa de pelo menos 14 dias de histórico pra ter confiança no número.'
+        }
         loading={loading}
         icone={<Clock />}
         tom={
-          k?.runway_meses == null
+          (k?.runway_dias_historico ?? 0) < 14
             ? 'default'
-            : k.runway_meses < 3
-              ? 'destructive'
-              : k.runway_meses < 6
-                ? 'warning'
-                : 'success'
+            : k?.runway_meses == null
+              ? 'default'
+              : k.runway_meses < 3
+                ? 'destructive'
+                : k.runway_meses < 6
+                  ? 'warning'
+                  : 'success'
         }
         valor={
-          k?.runway_meses != null ? `${k.runway_meses.toFixed(1)} m` : '∞'
+          (k?.runway_dias_historico ?? 0) < 14
+            ? '—'
+            : k?.runway_meses != null
+              ? `${k.runway_meses.toFixed(1)} m`
+              : '∞'
         }
-        hint="Meses no ritmo atual"
+        hint={
+          (k?.runway_dias_historico ?? 0) < 14
+            ? `Só ${k?.runway_dias_historico ?? 0} dia(s) de histórico — precisa de 14+`
+            : 'Meses no ritmo atual'
+        }
+        onClick={() => abrirDrill('folego_caixa')}
       />
 
       <KpiHumano
@@ -186,6 +233,7 @@ export function KpisExecutivosCards(): React.ReactElement {
         tom={(k?.tarifas_mes_count ?? 0) > 0 ? 'warning' : 'default'}
         valor={formatBRL(k?.tarifas_mes_valor ?? 0)}
         hint={`${k?.tarifas_mes_count ?? 0} tarifa(s) registrada(s)`}
+        onClick={() => abrirDrill('custo_bancario')}
       />
 
       {/* RISCO / EXPOSIÇÃO */}
@@ -203,6 +251,7 @@ export function KpisExecutivosCards(): React.ReactElement {
         }
         valor={`${(k?.pct_limite_consumido ?? 0).toFixed(1)}%`}
         hint={`${formatBRL(k?.limite_consumido ?? 0)} de ${formatBRL(k?.limite_total_configurado ?? 0)}`}
+        onClick={() => abrirDrill('limite_uso')}
       />
 
       <KpiHumano
@@ -217,6 +266,7 @@ export function KpisExecutivosCards(): React.ReactElement {
             ? 'Veja "Contas com cheque especial" abaixo'
             : 'Todas no positivo'
         }
+        onClick={() => abrirDrill('contas_negativas')}
       />
 
       {/* ATENÇÃO NECESSÁRIA */}
@@ -236,8 +286,16 @@ export function KpisExecutivosCards(): React.ReactElement {
             ? 'Aguardam revisão urgente'
             : 'Nada pendente'
         }
+        onClick={() => abrirDrill('aprovadas_sem_voce')}
       />
     </div>
+
+    <KpiDrillDownDialog
+      open={drillOpen}
+      onOpenChange={setDrillOpen}
+      kind={drillKind}
+    />
+    </>
   )
 }
 
