@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+  body {
+    background: radial-gradient(ellipse at top, #1a1a1a 0%, #0b0b0b 60%);
+    min-height: 100dvh;
+    font-feature-settings: 'cv11', 'ss01', 'ss02';
+  }
+  /* Iframe-safe scrollbar */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-zinc-800/80 bg-zinc-900/40 backdrop-blur-sm;
+  }
+  .card-elevated {
+    @apply card shadow-[0_10px_40px_-20px_rgba(245,158,11,0.15)];
+  }
+  .tarja-amber {
+    @apply absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-amb-500 via-amb-400 to-amb-500;
+  }
+  .label-eyebrow {
+    @apply text-[10px] font-bold uppercase tracking-[2px] text-amb-400;
+  }
+  .num-mono {
+    @apply font-mono tabular-nums tracking-tight;
+  }
+}
