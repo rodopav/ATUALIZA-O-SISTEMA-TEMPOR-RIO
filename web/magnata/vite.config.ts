@@ -10,7 +10,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'icon-192.png', 'icon-512.png'],
+      includeAssets: ['favicon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'],
       manifest: {
         name: 'Magnata Dashboard — Rodopav',
         short_name: 'Magnata',
@@ -27,16 +27,41 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // Cache de fonts e imagens; HTML/JS/CSS são revalidados (autoUpdate).
+        // skipWaiting + clientsClaim: novo SW assume IMEDIATAMENTE quando user
+        // abre — sem precisar fechar todas as abas. cleanupOutdatedCaches
+        // remove caches de versões antigas (sem isso, refresh em rota client-side
+        // serve HTML antigo apontando pra JS bundle que já foi limpo da CDN
+        // = tela em branco / loop).
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
+        // SPA routing: refresh em /liquidez serve /index.html (já com rewrite
+        // na Vercel, mas o SW intercepta antes — sem navigateFallback ele
+        // procura /liquidez.html no cache, não acha, dá erro).
+        navigateFallback: 'index.html',
+        // /sw.js, /workbox-*.js, manifest e arquivos .png NÃO devem cair no
+        // fallback (precisam ser servidos como estão).
+        navigateFallbackDenylist: [/^\/sw\.js$/, /^\/workbox-.*\.js$/, /\.(png|svg|ico|webmanifest)$/, /^\/api\//],
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         runtimeCaching: [
           {
+            // Supabase REST: network-first com timeout 5s, fallback cache.
             urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/.*/i,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'supabase-rest',
               networkTimeoutSeconds: 5,
               expiration: { maxEntries: 50, maxAgeSeconds: 60 * 5 },
+            },
+          },
+          {
+            // HTML do shell — sempre tenta rede antes (evita servir HTML antigo
+            // apontando pra JS bundle expirado).
+            urlPattern: ({ request }) => request.mode === 'navigate',
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'html-shell',
+              networkTimeoutSeconds: 3,
             },
           },
         ],

@@ -18,9 +18,12 @@ function build(): SupabaseClient {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
-      detectSessionInUrl: true,
+      // FALSO porque não usamos OAuth/magic link. Quando true e a URL tem
+      // hash ou query strings residuais (volta do SW, refresh, etc.), Supabase
+      // tenta processar como callback OAuth e pode entrar em loop tentando
+      // limpar a URL. Login é email+senha, não precisa detectar nada na URL.
+      detectSessionInUrl: false,
       // Storage key fixa: a sessão persiste entre reloads e re-instalações do PWA.
-      // Sem isso, a Supabase usa uma chave derivada que mudaria se trocássemos URL.
       storageKey: 'rodopav-magnata-auth',
       storage: typeof window !== 'undefined' ? window.localStorage : undefined,
       flowType: 'pkce',

@@ -1,11 +1,33 @@
 /// <reference lib="webworker" />
-import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching'
+import { precacheAndRoute, cleanupOutdatedCaches, createHandlerBoundToURL } from 'workbox-precaching'
+import { NavigationRoute, registerRoute } from 'workbox-routing'
+import { NetworkFirst } from 'workbox-strategies'
 import { clientsClaim } from 'workbox-core'
 
 declare const self: ServiceWorkerGlobalScope
 
+// Limpa caches de versões antigas — sem isso, HTML cacheado pode referenciar
+// JS bundle que já foi removido da CDN (causa loop / tela em branco no refresh).
 cleanupOutdatedCaches()
 precacheAndRoute(self.__WB_MANIFEST)
+
+// SPA routing: qualquer navegação (refresh em /pendentes, etc) serve
+// /index.html. Sem isso o SW falha em rotas client-side.
+const navHandler = createHandlerBoundToURL('/index.html')
+const navRoute = new NavigationRoute(navHandler, {
+  // Não interceptar arquivos estáticos do próprio SW e API.
+  denylist: [/^\/sw\.js$/, /^\/workbox-.*\.js$/, /\.(png|svg|ico|webmanifest|json)$/, /^\/api\//],
+})
+registerRoute(navRoute)
+
+// Supabase REST: network-first com fallback de cache (offline básico).
+registerRoute(
+  ({ url }) => url.hostname.endsWith('.supabase.co') && url.pathname.startsWith('/rest/'),
+  new NetworkFirst({
+    cacheName: 'supabase-rest',
+    networkTimeoutSeconds: 5,
+  }),
+)
 
 self.skipWaiting()
 clientsClaim()
