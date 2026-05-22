@@ -4,12 +4,11 @@ import { PieChart } from 'lucide-react'
 import { PageTitle, Section } from './VisaoGeral'
 import { Card, CardContent } from '../components/ui/Card'
 import { centrosCustoSaidasQuery } from '../lib/queries'
-import { formatBRLAuto, useIsMobile } from '../lib/format'
+import { formatBRL } from '../lib/format'
 import { cn } from '../lib/cn'
 
 export function CentrosCusto(): React.ReactElement {
   const q = useQuery(centrosCustoSaidasQuery)
-  const isMobile = useIsMobile()
   const items = q.data ?? []
   const total = items.reduce((s, r) => s + r.total_saidas, 0)
 
@@ -55,7 +54,7 @@ export function CentrosCusto(): React.ReactElement {
                               'num-mono shrink-0 text-sm font-bold text-red-300',
                             )}
                           >
-                            {formatBRLAuto(c.total_saidas, isMobile)}
+                            {formatBRL(c.total_saidas)}
                           </p>
                           <p className="text-[9px] text-zinc-500">{pct.toFixed(1)}% do mês</p>
                         </div>

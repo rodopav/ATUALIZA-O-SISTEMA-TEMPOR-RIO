@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { kpisExecutivosQuery, alertasQuery } from '../lib/queries'
 import { formatBRL } from '../lib/format'
 import { cn } from '../lib/cn'
+import { FitNumber } from './FitNumber'
 
 /**
  * Hero — diagnóstico em 3 segundos.
@@ -52,9 +53,11 @@ export function HeroExecutivo(): React.ReactElement {
           {k.isLoading ? (
             <div className="mt-1 h-12 w-72 animate-pulse rounded bg-zinc-800/60" />
           ) : (
-            <p className="num-mono mt-1 text-[44px] font-extrabold leading-tight text-zinc-50 sm:text-[52px]">
-              {formatBRL(kpis?.saldo_geral ?? 0)}
-            </p>
+            <div className="mt-1">
+              <FitNumber maxFontPx={52} maxFontPxMobile={40} minFontPx={20} lineHeight={1.1}>
+                {formatBRL(kpis?.saldo_geral ?? 0)}
+              </FitNumber>
+            </div>
           )}
           {kpis ? (
             <p className="mt-2 text-sm text-zinc-400">

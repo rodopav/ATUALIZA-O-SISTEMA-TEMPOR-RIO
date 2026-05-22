@@ -5,13 +5,12 @@ import { PageTitle, Section } from './VisaoGeral'
 import { KpiCard } from '../components/KpiCard'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { kpisExecutivosQuery, contasSaldoQuery } from '../lib/queries'
-import { formatBRL, formatBRLAuto, useIsMobile } from '../lib/format'
+import { formatBRL } from '../lib/format'
 import { cn } from '../lib/cn'
 
 export function Liquidez(): React.ReactElement {
   const k = useQuery(kpisExecutivosQuery)
   const contas = useQuery(contasSaldoQuery)
-  const isMobile = useIsMobile()
 
   const ranking = (contas.data ?? []).slice(0, 10)
 
@@ -26,14 +25,14 @@ export function Liquidez(): React.ReactElement {
             icone={<ShieldCheck className="h-4 w-4" />}
             tom="success"
             loading={k.isLoading}
-            valor={formatBRLAuto(k.data?.liquidez_imediata ?? 0, isMobile)}
+            valor={formatBRL(k.data?.liquidez_imediata ?? 0)}
             hint="Saldo positivo (sem usar limite)"
           />
           <KpiCard
             label="Saldo das contas"
             icone={<Wallet className="h-4 w-4" />}
             loading={k.isLoading}
-            valor={formatBRLAuto(k.data?.saldo_contas ?? 0, isMobile)}
+            valor={formatBRL(k.data?.saldo_contas ?? 0)}
             hint="Bancos (exceto caixa físico)"
           />
           <KpiCard
@@ -41,7 +40,7 @@ export function Liquidez(): React.ReactElement {
             icone={<Coins className="h-4 w-4" />}
             tom="info"
             loading={k.isLoading}
-            valor={formatBRLAuto(k.data?.saldo_caixa_fisico ?? 0, isMobile)}
+            valor={formatBRL(k.data?.saldo_caixa_fisico ?? 0)}
             hint="Cofre + gavetas"
           />
           <KpiCard

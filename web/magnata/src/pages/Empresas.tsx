@@ -4,12 +4,11 @@ import { Building2 } from 'lucide-react'
 import { PageTitle, Section } from './VisaoGeral'
 import { Card, CardContent } from '../components/ui/Card'
 import { saldoPorEmpresaQuery } from '../lib/queries'
-import { formatBRL, useIsMobile, formatBRLAuto } from '../lib/format'
+import { formatBRL } from '../lib/format'
 import { cn } from '../lib/cn'
 
 export function Empresas(): React.ReactElement {
   const q = useQuery(saldoPorEmpresaQuery)
-  const isMobile = useIsMobile()
   const items = q.data ?? []
   const total = items.reduce((s, r) => s + r.saldo_total, 0)
   const maxAbs = items.reduce((m, r) => Math.max(m, Math.abs(r.saldo_total)), 0) || 1
@@ -50,7 +49,7 @@ export function Empresas(): React.ReactElement {
                             neg ? 'text-red-400' : 'text-zinc-50',
                           )}
                         >
-                          {formatBRLAuto(e.saldo_total, isMobile)}
+                          {formatBRL(e.saldo_total)}
                         </span>
                       </div>
                       <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-zinc-800">

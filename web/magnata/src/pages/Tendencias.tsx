@@ -4,7 +4,7 @@ import { LineChart, TrendingUp, TrendingDown } from 'lucide-react'
 import { PageTitle, Section } from './VisaoGeral'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { fluxoMensalQuery } from '../lib/queries'
-import { formatBRLAuto, useIsMobile } from '../lib/format'
+import { formatBRL } from '../lib/format'
 
 /**
  * Tendências: regressão linear simples sobre os últimos 12 meses de líquido.
@@ -12,7 +12,6 @@ import { formatBRLAuto, useIsMobile } from '../lib/format'
  */
 export function Tendencias(): React.ReactElement {
   const q = useQuery(fluxoMensalQuery)
-  const isMobile = useIsMobile()
   const meses = (q.data ?? []).slice(-12)
 
   // Regressão linear y = a*x + b
@@ -60,7 +59,7 @@ export function Tendencias(): React.ReactElement {
                 }
               >
                 {slope >= 0 ? '+' : ''}
-                {formatBRLAuto(slope, isMobile)}/mês
+                {formatBRL(slope)}/mês
               </p>
               <p className="mt-1 text-xs text-zinc-500">
                 Líquido médio cresce/cai por mês no ritmo atual.
@@ -84,7 +83,7 @@ export function Tendencias(): React.ReactElement {
                       'num-mono font-bold ' + (v >= 0 ? 'text-emerald-400' : 'text-red-400')
                     }
                   >
-                    {formatBRLAuto(v, isMobile)}
+                    {formatBRL(v)}
                   </span>
                 </div>
               ))}

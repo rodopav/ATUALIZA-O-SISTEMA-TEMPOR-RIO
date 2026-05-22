@@ -10,12 +10,11 @@ import {
 import { PageTitle, Section } from './VisaoGeral'
 import { KpiCard } from '../components/KpiCard'
 import { kpisExecutivosQuery, alertasQuery } from '../lib/queries'
-import { formatBRLAuto, useIsMobile } from '../lib/format'
+import { formatBRL } from '../lib/format'
 
 export function Saude(): React.ReactElement {
   const k = useQuery(kpisExecutivosQuery)
   const a = useQuery(alertasQuery)
-  const isMobile = useIsMobile()
   const kpi = k.data
 
   const alertas = a.data ?? []
@@ -64,7 +63,7 @@ export function Saude(): React.ReactElement {
             }
             loading={k.isLoading}
             valor={`${(kpi?.pct_limite_consumido ?? 0).toFixed(1)}%`}
-            hint={`${formatBRLAuto(kpi?.limite_consumido ?? 0, isMobile)} em uso`}
+            hint={`${formatBRL(kpi?.limite_consumido ?? 0)} em uso`}
           />
           <KpiCard
             label="Tarifas no mês"
@@ -72,7 +71,7 @@ export function Saude(): React.ReactElement {
             tom={(kpi?.tarifas_mes_count ?? 0) > 0 ? 'warning' : 'default'}
             loading={k.isLoading}
             valor={String(kpi?.tarifas_mes_count ?? 0)}
-            hint={formatBRLAuto(kpi?.tarifas_mes_valor ?? 0, isMobile)}
+            hint={formatBRL(kpi?.tarifas_mes_valor ?? 0)}
           />
           <KpiCard
             label="Solicitações pendentes"

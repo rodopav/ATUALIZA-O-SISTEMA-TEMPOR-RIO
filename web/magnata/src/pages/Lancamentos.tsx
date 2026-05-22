@@ -5,7 +5,7 @@ import { PageTitle, Section } from './VisaoGeral'
 import { Card, CardContent } from '../components/ui/Card'
 import { Input } from '../components/ui/Input'
 import { lancamentosListQuery, type MagnataLancamento } from '../lib/queries'
-import { formatBRL, formatDate, formatBRLAuto, useIsMobile } from '../lib/format'
+import { formatBRL, formatDate } from '../lib/format'
 import { cn } from '../lib/cn'
 
 type NaturezaFiltro = 'all' | 'ENTRADA' | 'SAIDA' | 'TRANSFERENCIA'
@@ -27,7 +27,6 @@ function fimMes(): string {
 }
 
 export function Lancamentos(): React.ReactElement {
-  const isMobile = useIsMobile()
   const [filtros, setFiltros] = React.useState({
     inicio: inicioMes(),
     fim: fimMes(),
@@ -106,9 +105,9 @@ export function Lancamentos(): React.ReactElement {
 
       <Section label={`${totais.count} lançamento(s)`}>
         <div className="grid grid-cols-3 gap-2">
-          <MiniStat label="Entradas" valor={formatBRLAuto(totais.entradas, isMobile)} tom="success" />
-          <MiniStat label="Saídas" valor={formatBRLAuto(totais.saidas, isMobile)} tom="destructive" />
-          <MiniStat label="Transf." valor={formatBRLAuto(totais.transf, isMobile)} tom="info" />
+          <MiniStat label="Entradas" valor={formatBRL(totais.entradas)} tom="success" />
+          <MiniStat label="Saídas" valor={formatBRL(totais.saidas)} tom="destructive" />
+          <MiniStat label="Transf." valor={formatBRL(totais.transf)} tom="info" />
         </div>
 
         <Card>

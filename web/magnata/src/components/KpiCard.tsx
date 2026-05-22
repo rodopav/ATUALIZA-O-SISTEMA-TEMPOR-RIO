@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { cn } from '../lib/cn'
+import { FitNumber } from './FitNumber'
 
 type Tom = 'default' | 'success' | 'warning' | 'destructive' | 'info'
 
@@ -26,11 +27,14 @@ interface KpiCardProps {
   tom?: Tom
   loading?: boolean
   onClick?: () => void
+  /** Se false, não escala o valor automaticamente (use pra texto curto tipo "OK"). */
+  fit?: boolean
 }
 
 /**
- * Card responsivo. Em mobile o valor encolhe (text-xl) e usa truncate
- * pra não estourar. Pra valores grandes (>1M), preferir formatBRLCompact.
+ * Card de KPI. O valor é renderizado dentro de <FitNumber>, que mede o
+ * container e diminui o font-size até o número caber sem cortar.
+ * Nunca compacta (R$ 1,2M) — sempre mostra o valor completo.
  */
 export function KpiCard({
   label,
@@ -40,6 +44,7 @@ export function KpiCard({
   tom = 'default',
   loading,
   onClick,
+  fit = true,
 }: KpiCardProps): React.ReactElement {
   const clickable = Boolean(onClick)
   return (
@@ -74,6 +79,10 @@ export function KpiCard({
       <div className="mt-2 min-h-[28px] sm:min-h-[36px]">
         {loading ? (
           <div className="h-7 w-24 animate-pulse rounded bg-zinc-800/60" />
+        ) : fit ? (
+          <FitNumber maxFontPx={28} maxFontPxMobile={22} minFontPx={13}>
+            {valor}
+          </FitNumber>
         ) : (
           <p className="num-mono truncate text-[20px] sm:text-[24px] xl:text-[26px] font-extrabold leading-none text-zinc-50">
             {valor}

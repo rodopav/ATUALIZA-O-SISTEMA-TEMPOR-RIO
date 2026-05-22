@@ -4,7 +4,7 @@ import { TrendingUp, TrendingDown, Equal } from 'lucide-react'
 import { PageTitle, Section } from './VisaoGeral'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { fluxoMensalQuery } from '../lib/queries'
-import { formatBRLAuto, useIsMobile } from '../lib/format'
+import { formatBRL } from '../lib/format'
 import { cn } from '../lib/cn'
 
 const MES_PT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
@@ -16,7 +16,6 @@ function nomeMes(periodo: string): string {
 
 export function Fluxo(): React.ReactElement {
   const q = useQuery(fluxoMensalQuery)
-  const isMobile = useIsMobile()
   const meses = q.data ?? []
 
   const ultimos12 = meses.slice(-12)
@@ -34,19 +33,19 @@ export function Fluxo(): React.ReactElement {
         <div className="grid gap-3 sm:grid-cols-3">
           <ResumoBox
             label="Entradas"
-            valor={formatBRLAuto(totalEntradas, isMobile)}
+            valor={formatBRL(totalEntradas)}
             tom="success"
             icone={<TrendingUp className="h-3.5 w-3.5" />}
           />
           <ResumoBox
             label="Saídas"
-            valor={formatBRLAuto(totalSaidas, isMobile)}
+            valor={formatBRL(totalSaidas)}
             tom="destructive"
             icone={<TrendingDown className="h-3.5 w-3.5" />}
           />
           <ResumoBox
             label="Líquido"
-            valor={formatBRLAuto(totalLiquido, isMobile)}
+            valor={formatBRL(totalLiquido)}
             tom={totalLiquido >= 0 ? 'success' : 'destructive'}
             icone={<Equal className="h-3.5 w-3.5" />}
           />
@@ -81,7 +80,7 @@ export function Fluxo(): React.ReactElement {
                             r.liquido >= 0 ? 'text-emerald-400' : 'text-red-400',
                           )}
                         >
-                          {formatBRLAuto(r.liquido, true)}
+                          {formatBRL(r.liquido)}
                         </span>
                       </div>
                       <div className="mt-0.5 flex items-center gap-1">
