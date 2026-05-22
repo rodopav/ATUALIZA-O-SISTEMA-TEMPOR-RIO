@@ -2,6 +2,7 @@ import { queryOptions } from '@tanstack/react-query'
 import { supabase } from './supabase'
 
 const STALE_30S = 30_000
+const STALE_5M = 5 * 60_000
 
 function pickNum(v: unknown): number {
   const n = typeof v === 'string' ? Number.parseFloat(v) : Number(v)
@@ -104,7 +105,7 @@ export const alertasQuery = queryOptions({
   staleTime: STALE_30S,
 })
 
-/* ===================== Drill-downs ===================== */
+/* ===================== Contas negativas ===================== */
 
 export interface DrillContaNegativa {
   conta_id: string
@@ -125,31 +126,6 @@ export const drillContasNegativasQuery = queryOptions({
       ...r,
       saldo_atual: pickNum(r.saldo_atual),
       limite_disponivel: pickNullableNum(r.limite_disponivel),
-    }))
-  },
-  staleTime: STALE_30S,
-})
-
-export interface DrillMovimento {
-  lancamento_id: string
-  data: string
-  descricao: string
-  valor: number
-  natureza: string
-  conta_apelido: string
-  is_transferencia: boolean
-}
-
-export const drillMovimentosMesQuery = queryOptions({
-  queryKey: ['magnata', 'drill', 'movimentos-mes'] as const,
-  queryFn: async (): Promise<DrillMovimento[]> => {
-    const { data, error } = await supabase.rpc('magnata_drill_movimentos_mes', {
-      p_limit: 10,
-    })
-    if (error) throw error
-    return ((data ?? []) as DrillMovimento[]).map((r) => ({
-      ...r,
-      valor: pickNum(r.valor),
     }))
   },
   staleTime: STALE_30S,
@@ -185,3 +161,207 @@ export const limitesPorContaQuery = queryOptions({
   },
   staleTime: STALE_30S,
 })
+
+/* ===================== Saldo por empresa ===================== */
+
+export interface SaldoPorEmpresa {
+  empresa_id: string
+  empresa: string
+  saldo_total: number
+  qtd_contas: number
+}
+
+export const saldoPorEmpresaQuery = queryOptions({
+  queryKey: ['magnata', 'saldo-por-empresa'] as const,
+  queryFn: async (): Promise<SaldoPorEmpresa[]> => {
+    const { data, error } = await supabase
+      .from('v_saldo_por_empresa')
+      .select('*')
+      .order('saldo_total', { ascending: false })
+    if (error) throw error
+    return ((data ?? []) as any[]).map((r) => ({
+      empresa_id: r.empresa_id,
+      empresa: r.empresa ?? r.razao_social ?? '—',
+      saldo_total: pickNum(r.saldo_total),
+      qtd_contas: pickNum(r.qtd_contas),
+    }))
+  },
+  staleTime: STALE_30S,
+})
+
+/* ===================== Contas saldo lista ===================== */
+
+export interface ContaSaldo {
+  conta_id: string
+  apelido: string
+  banco: string | null
+  saldo_atual: number
+  is_caixa_fisico: boolean
+  tem_limite: boolean
+}
+
+export const contasSaldoQuery = queryOptions({
+  queryKey: ['magnata', 'contas-saldo'] as const,
+  queryFn: async (): Promise<ContaSaldo[]> => {
+    const { data, error } = await supabase
+      .from('v_contas_saldo')
+      .select('*')
+      .order('saldo_atual', { ascending: false })
+    if (error) throw error
+    return ((data ?? []) as any[]).map((r) => ({
+      conta_id: r.conta_id ?? r.id,
+      apelido: r.apelido,
+      banco: r.banco ?? null,
+      saldo_atual: pickNum(r.saldo_atual),
+      is_caixa_fisico: Boolean(r.is_caixa_fisico),
+      tem_limite: Boolean(r.tem_limite),
+    }))
+  },
+  staleTime: STALE_30S,
+})
+
+/* ===================== Fluxo mensal ===================== */
+
+export interface FluxoMensal {
+  periodo: string
+  entradas: number
+  saidas: number
+  liquido: number
+  qtd_lancamentos: number
+}
+
+export const fluxoMensalQuery = queryOptions({
+  queryKey: ['magnata', 'fluxo-mensal'] as const,
+  queryFn: async (): Promise<FluxoMensal[]> => {
+    const { data, error } = await supabase
+      .from('v_fluxo_mensal')
+      .select('*')
+      .order('periodo', { ascending: true })
+    if (error) throw error
+    return ((data ?? []) as any[]).map((r) => ({
+      periodo: r.periodo,
+      entradas: pickNum(r.entradas),
+      saidas: pickNum(r.saidas),
+      liquido: pickNum(r.liquido),
+      qtd_lancamentos: pickNum(r.qtd_lancamentos),
+    }))
+  },
+  staleTime: STALE_30S,
+})
+
+/* ===================== Centros de custo (saídas mês) ===================== */
+
+export interface CentroCustoSaida {
+  centro_custo_id: string
+  codigo: string
+  nome: string
+  total_saidas: number
+  qtd_lancamentos: number
+}
+
+export const centrosCustoSaidasQuery = queryOptions({
+  queryKey: ['magnata', 'centros-custo-saidas'] as const,
+  queryFn: async (): Promise<CentroCustoSaida[]> => {
+    // Agrupa manualmente lançamentos do mês — não depende de view.
+    const inicio = new Date()
+    const inicioStr = `${inicio.getFullYear()}-${String(inicio.getMonth() + 1).padStart(2, '0')}-01`
+    const { data, error } = await supabase
+      .from('lancamentos')
+      .select(
+        `valor, centro_custo_id,
+         centro:centros_de_custo!inner(id, codigo, nome),
+         tipo:tipos_operacao(is_transferencia)`,
+      )
+      .gte('data', inicioStr)
+      .eq('natureza', 'SAIDA')
+      .is('estorno_de_id', null)
+    if (error) throw error
+    const map = new Map<string, CentroCustoSaida>()
+    for (const r of (data ?? []) as any[]) {
+      if (r.tipo?.is_transferencia) continue
+      const ccId = r.centro_custo_id
+      if (!ccId || !r.centro) continue
+      const cur = map.get(ccId) ?? {
+        centro_custo_id: ccId,
+        codigo: r.centro.codigo,
+        nome: r.centro.nome,
+        total_saidas: 0,
+        qtd_lancamentos: 0,
+      }
+      cur.total_saidas += pickNum(r.valor)
+      cur.qtd_lancamentos += 1
+      map.set(ccId, cur)
+    }
+    return [...map.values()].sort((a, b) => b.total_saidas - a.total_saidas).slice(0, 20)
+  },
+  staleTime: STALE_5M,
+})
+
+/* ===================== Lançamentos lista ===================== */
+
+export interface MagnataLancamento {
+  id: string
+  data: string
+  descricao: string
+  valor: number
+  natureza: 'ENTRADA' | 'SAIDA'
+  is_transferencia: boolean
+  is_estorno: boolean
+  estornado: boolean
+  conta_origem_apelido: string | null
+  conta_destino_apelido: string | null
+  empresa_nome: string | null
+  responsavel_nome: string | null
+}
+
+export function lancamentosListQuery(filters: {
+  inicio: string
+  fim: string
+  natureza: 'all' | 'ENTRADA' | 'SAIDA' | 'TRANSFERENCIA'
+}) {
+  return queryOptions({
+    queryKey: ['magnata', 'lancamentos', filters] as const,
+    queryFn: async (): Promise<MagnataLancamento[]> => {
+      let q = supabase
+        .from('lancamentos')
+        .select(
+          `id, data, descricao, valor, natureza, motivo_estorno, estorno_de_id,
+           tipo:tipos_operacao(is_transferencia),
+           origem:contas_bancarias!lancamentos_conta_origem_id_fkey(apelido, empresa:empresas(razao_social, nome_fantasia)),
+           destino:contas_bancarias!lancamentos_conta_destino_id_fkey(apelido),
+           responsavel:profiles!lancamentos_responsavel_id_profiles_fkey(nome_completo)`,
+        )
+        .order('data', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(300)
+      if (filters.inicio) q = q.gte('data', filters.inicio)
+      if (filters.fim) q = q.lte('data', filters.fim)
+      const { data, error } = await q
+      if (error) throw error
+      const rows = ((data ?? []) as any[]).map((r): MagnataLancamento => {
+        const empresa = r.origem?.empresa
+          ? (r.origem.empresa.nome_fantasia ?? r.origem.empresa.razao_social)
+          : null
+        return {
+          id: r.id,
+          data: r.data,
+          descricao: r.descricao ?? '',
+          valor: pickNum(r.valor),
+          natureza: r.natureza,
+          is_transferencia: Boolean(r.tipo?.is_transferencia),
+          is_estorno: r.estorno_de_id != null,
+          estornado: r.motivo_estorno != null,
+          conta_origem_apelido: r.origem?.apelido ?? null,
+          conta_destino_apelido: r.destino?.apelido ?? null,
+          empresa_nome: empresa,
+          responsavel_nome: r.responsavel?.nome_completo ?? null,
+        }
+      })
+      if (filters.natureza === 'TRANSFERENCIA') return rows.filter((r) => r.is_transferencia)
+      if (filters.natureza === 'ENTRADA') return rows.filter((r) => r.natureza === 'ENTRADA' && !r.is_transferencia)
+      if (filters.natureza === 'SAIDA') return rows.filter((r) => r.natureza === 'SAIDA' && !r.is_transferencia)
+      return rows
+    },
+    staleTime: STALE_30S,
+  })
+}

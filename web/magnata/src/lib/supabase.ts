@@ -1,27 +1,47 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { getConfig } from './config'
 
-// PWA usa env vars da Vercel — sem tela de config como no desktop.
-// As 2 chaves estão definidas em Settings → Environment Variables na Vercel.
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
+// Cliente lazy — só instancia quando a config existe. Se o usuário trocar
+// URL/key via SetupConfig, chama `resetSupabaseClient()` pra rebuildar.
+let _client: SupabaseClient | null = null
+let _builtFor: string | null = null
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  // Mensagem clara em dev pra não perder tempo debugando "Failed to fetch"
-  console.error(
-    '[supabase] Variáveis VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY ausentes. ' +
-    'Em dev, crie .env.local. Em prod, defina na Vercel.',
-  )
-}
-
-export const supabase: SupabaseClient = createClient(
-  SUPABASE_URL ?? 'http://localhost',
-  SUPABASE_ANON_KEY ?? 'invalid',
-  {
+function build(): SupabaseClient {
+  const cfg = getConfig()
+  if (!cfg) {
+    // Cliente "vazio" — só pra evitar crash caso algo seja chamado antes do gate.
+    return createClient('https://invalid.invalid', 'invalid', {
+      auth: { persistSession: false },
+    })
+  }
+  return createClient(cfg.url, cfg.anonKey, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
+      // Storage key fixa: a sessão persiste entre reloads e re-instalações do PWA.
+      // Sem isso, a Supabase usa uma chave derivada que mudaria se trocássemos URL.
+      storageKey: 'rodopav-magnata-auth',
       storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+      flowType: 'pkce',
     },
+  })
+}
+
+export const supabase: SupabaseClient = new Proxy({} as SupabaseClient, {
+  get(_target, prop, receiver) {
+    const cfg = getConfig()
+    const key = cfg?.url ?? null
+    if (!_client || _builtFor !== key) {
+      _client = build()
+      _builtFor = key
+    }
+    const value = Reflect.get(_client as object, prop, receiver)
+    return typeof value === 'function' ? value.bind(_client) : value
   },
-)
+})
+
+export function resetSupabaseClient(): void {
+  _client = null
+  _builtFor = null
+}

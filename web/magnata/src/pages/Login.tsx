@@ -1,6 +1,8 @@
 import * as React from 'react'
-import { Lock, Mail, AlertCircle } from 'lucide-react'
+import { Lock, Mail, AlertCircle, Settings } from 'lucide-react'
 import { signIn } from '../lib/auth-store'
+import { clearConfig, getConfig } from '../lib/config'
+import { resetSupabaseClient } from '../lib/supabase'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { Card } from '../components/ui/Card'
@@ -31,12 +33,10 @@ export function Login(): React.ReactElement {
       <Card elevated className="w-full max-w-md overflow-hidden">
         <div className="tarja-amber" />
         <div className="px-6 py-8 sm:px-8 sm:py-10">
-          <div className="mb-7 flex items-center gap-2.5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amb-400 text-zinc-950">
-              <span className="text-lg font-extrabold">M</span>
-            </div>
-            <div>
-              <p className="label-eyebrow">Magnata</p>
+          <div className="mb-7 flex items-center gap-3">
+            <img src="/icon-192.png" alt="Rodopav" className="h-12 w-12 rounded-lg shrink-0" />
+            <div className="min-w-0">
+              <p className="label-eyebrow">Magnata Rodopav</p>
               <h1 className="text-lg font-bold leading-tight text-zinc-50">Cockpit Executivo</h1>
             </div>
           </div>
@@ -86,6 +86,22 @@ export function Login(): React.ReactElement {
           <p className="mt-6 text-center text-xs text-zinc-500">
             Acesso apenas para usuários com flag <code className="font-mono">is_magnata</code> ativa.
           </p>
+
+          <div className="mt-4 flex items-center justify-center gap-1.5 border-t border-zinc-800/60 pt-3">
+            <Settings className="h-3 w-3 text-zinc-600" />
+            <button
+              type="button"
+              onClick={() => {
+                if (!confirm('Trocar de conexão Supabase? Você precisará digitar URL+chave de novo.')) return
+                clearConfig()
+                resetSupabaseClient()
+                window.location.reload()
+              }}
+              className="text-[10px] uppercase tracking-wider text-zinc-500 hover:text-zinc-300"
+            >
+              Trocar de conexão · {getConfig()?.url.replace(/^https?:\/\//, '').slice(0, 32) ?? '—'}
+            </button>
+          </div>
         </div>
       </Card>
     </div>

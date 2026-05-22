@@ -7,3 +7,5 @@ dev-dist
 *.log
 .vite
 .DS_Store
+
+.vercel

@@ -30,11 +30,9 @@ export function Login(): React.ReactElement {
       <Card elevated className="w-full max-w-md overflow-hidden">
         <div className="tarja-amber" />
         <div className="px-6 py-8 sm:px-8 sm:py-10">
-          <div className="mb-7 flex items-center gap-2.5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amb-400 text-zinc-950">
-              <CheckCheck className="h-5 w-5" />
-            </div>
-            <div>
+          <div className="mb-7 flex items-center gap-3">
+            <img src="/icon-192.png" alt="Rodopav" className="h-12 w-12 rounded-lg shrink-0" />
+            <div className="min-w-0">
               <p className="label-eyebrow">Rodopav</p>
               <h1 className="text-lg font-bold leading-tight text-zinc-50">Aprovações</h1>
             </div>
