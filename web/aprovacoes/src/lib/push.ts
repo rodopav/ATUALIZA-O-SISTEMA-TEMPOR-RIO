@@ -1,6 +1,6 @@
-// Web Push API — inscreve o navegador no Push Service do browser e
-// salva a subscription no Supabase (tabela `push_subscriptions`).
-// A Edge Function `notificar_aprovadores` envia a push quando há nova solicitação.
+// Web Push API — inscreve o navegador no Push Service do browser e salva a
+// subscription no Supabase (tabela `push_subscriptions`). A Edge Function
+// `notify-approvers` envia push quando há nova solicitação.
 
 import { supabase } from './supabase'
 
@@ -15,8 +15,42 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return out
 }
 
+export class PushError extends Error {
+  constructor(
+    message: string,
+    public readonly code:
+      | 'unsupported'
+      | 'no-vapid'
+      | 'denied'
+      | 'no-sw'
+      | 'subscribe-fail'
+      | 'persist-fail'
+      | 'no-session'
+      | 'ios-standalone',
+  ) {
+    super(message)
+  }
+}
+
 export function isPushSupported(): boolean {
-  return typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window
+  return (
+    typeof window !== 'undefined' &&
+    'serviceWorker' in navigator &&
+    'PushManager' in window &&
+    'Notification' in window
+  )
+}
+
+/** iOS exige PWA instalado (standalone) pra Web Push funcionar (Safari 16.4+). */
+function isIosBrowserNotStandalone(): boolean {
+  if (typeof window === 'undefined') return false
+  const ua = navigator.userAgent
+  const isIos = /iPad|iPhone|iPod/.test(ua)
+  if (!isIos) return false
+  const standalone =
+    (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true
+  return !standalone
 }
 
 export async function getPushPermission(): Promise<NotificationPermission> {
@@ -30,36 +64,76 @@ export async function requestPushPermission(): Promise<NotificationPermission> {
 }
 
 /**
- * Inscreve no Push Service. Idempotente — se já tem subscription, retorna ela.
- * Persiste o endpoint+keys em `push_subscriptions` no Supabase.
+ * Inscreve no Push Service. Lança PushError com .code descritivo se falhar
+ * em alguma etapa — o caller mostra a mensagem ao usuário.
+ *
+ * Idempotente: se já há subscription, só atualiza o registro no banco.
  */
-export async function subscribePush(): Promise<PushSubscription | null> {
-  if (!isPushSupported()) return null
+export async function subscribePush(): Promise<PushSubscription> {
+  if (!isPushSupported()) {
+    throw new PushError(
+      'Este navegador não suporta notificações push.',
+      'unsupported',
+    )
+  }
+  if (isIosBrowserNotStandalone()) {
+    throw new PushError(
+      'No iOS, notificações só funcionam com o app instalado na tela inicial. Toque em "Compartilhar" → "Adicionar à Tela de Início" e abra pelo ícone.',
+      'ios-standalone',
+    )
+  }
   if (!VAPID_PUBLIC_KEY) {
-    console.warn('[push] VITE_VAPID_PUBLIC_KEY não configurada — push desabilitado')
-    return null
+    throw new PushError(
+      'Chave VAPID não configurada (VITE_VAPID_PUBLIC_KEY). Avise o admin.',
+      'no-vapid',
+    )
+  }
+
+  // RLS de push_subscriptions exige sessão válida
+  const { data: sessData } = await supabase.auth.getSession()
+  if (!sessData.session) {
+    throw new PushError('Sessão expirada. Faça login de novo.', 'no-session')
   }
 
   const perm = await getPushPermission()
+  if (perm === 'denied') {
+    throw new PushError(
+      'Notificações bloqueadas pelo navegador. Abra Configurações do site → permita notificações.',
+      'denied',
+    )
+  }
   if (perm !== 'granted') {
     const req = await requestPushPermission()
-    if (req !== 'granted') return null
+    if (req !== 'granted') {
+      throw new PushError('Você precisa permitir notificações pra ativar essa função.', 'denied')
+    }
   }
 
-  const reg = await navigator.serviceWorker.ready
-  let sub = await reg.pushManager.getSubscription()
-  if (!sub) {
-    // applicationServerKey aceita BufferSource — TS5 strict reclama de
-    // Uint8Array<ArrayBufferLike>, então cast explícito.
-    const key = urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-    sub = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: key as unknown as BufferSource,
-    })
+  let reg: ServiceWorkerRegistration
+  try {
+    reg = await navigator.serviceWorker.ready
+  } catch {
+    throw new PushError('Service Worker não disponível. Recarregue a página.', 'no-sw')
   }
 
-  // Persiste no banco. SECURITY DEFINER RPC seria ideal, mas RLS simples
-  // com auth.uid() resolve. Tabela criada via migration (ver README).
+  let sub: PushSubscription | null
+  try {
+    sub = await reg.pushManager.getSubscription()
+    if (!sub) {
+      const key = urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: key as unknown as BufferSource,
+      })
+    }
+  } catch (err) {
+    throw new PushError(
+      'Falha ao registrar no serviço de push do navegador: ' +
+        (err instanceof Error ? err.message : String(err)),
+      'subscribe-fail',
+    )
+  }
+
   const payload = sub.toJSON()
   const { error } = await supabase.from('push_subscriptions').upsert(
     {
@@ -71,7 +145,7 @@ export async function subscribePush(): Promise<PushSubscription | null> {
     { onConflict: 'endpoint' },
   )
   if (error) {
-    console.warn('[push] Falha ao salvar subscription:', error.message)
+    throw new PushError('Falha ao salvar inscrição no Supabase: ' + error.message, 'persist-fail')
   }
   return sub
 }

@@ -43,9 +43,9 @@ export function Dashboard(): React.ReactElement {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 pb-12 pt-4 sm:px-6 sm:pt-6">
-      {/* Top bar */}
-      <header className="mb-4 flex items-center justify-between gap-3">
+    <div className="safe-screen mx-auto max-w-3xl px-4 pb-12 sm:px-6">
+      {/* Top bar — usa pt-2 já que o safe-screen já adicionou safe-area-inset-top */}
+      <header className="mb-4 flex items-center justify-between gap-3 pt-2">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
             <p className="label-eyebrow">Aprovações · Rodopav</p>

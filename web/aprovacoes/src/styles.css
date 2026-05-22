@@ -5,13 +5,19 @@
 @layer base {
   :root {
     color-scheme: dark;
+    /* Safe area insets do dispositivo (notch iOS, status bar Android).
+       Quando o PWA roda em modo standalone, viewport-fit=cover faz a app
+       ocupar a tela toda — sem esses paddings o header gruda no notch. */
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
   }
   body {
     background: radial-gradient(ellipse at top, #1a1a1a 0%, #0b0b0b 60%);
     min-height: 100dvh;
     font-feature-settings: 'cv11', 'ss01', 'ss02';
   }
-  /* Iframe-safe scrollbar */
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
@@ -33,5 +39,13 @@
   }
   .num-mono {
     @apply font-mono tabular-nums tracking-tight;
+  }
+  /* Container raiz que respeita a status bar / notch / barra inferior.
+     Aplicar no <main> ou no container que tem conteúdo no topo da tela. */
+  .safe-screen {
+    padding-top: max(0.75rem, var(--safe-top));
+    padding-bottom: max(1rem, var(--safe-bottom));
+    padding-left: var(--safe-left);
+    padding-right: var(--safe-right);
   }
 }

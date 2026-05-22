@@ -5,13 +5,17 @@
 @layer base {
   :root {
     color-scheme: dark;
+    /* Safe area do dispositivo (notch, status bar, gesture bar). */
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
   }
   body {
     background: radial-gradient(ellipse at top, #1a1a1a 0%, #0b0b0b 60%);
     min-height: 100dvh;
     font-feature-settings: 'cv11', 'ss01', 'ss02';
   }
-  /* Iframe-safe scrollbar */
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
@@ -33,5 +37,16 @@
   }
   .num-mono {
     @apply font-mono tabular-nums tracking-tight;
+  }
+  /* Padding pra respeitar safe areas — usado em headers sticky e containers raiz. */
+  .safe-top {
+    padding-top: max(0px, var(--safe-top));
+  }
+  .safe-bottom {
+    padding-bottom: max(0px, var(--safe-bottom));
+  }
+  .safe-x {
+    padding-left: var(--safe-left);
+    padding-right: var(--safe-right);
   }
 }
