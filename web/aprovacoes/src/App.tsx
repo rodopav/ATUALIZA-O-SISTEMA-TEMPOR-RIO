@@ -1,6 +1,8 @@
 import * as React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider, useAuth, signOut } from './lib/auth-store'
+import { ErrorBoundary } from './components/ErrorBoundary'
+import { ErrorToast, attachErrorToastToQueryClient } from './components/ErrorToast'
 import { Login } from './pages/Login'
 import { Dashboard } from './pages/Dashboard'
 
@@ -16,6 +18,8 @@ const queryClient = new QueryClient({
     },
   },
 })
+// Toast global pra erros de query — torna erros invisíveis em visíveis
+attachErrorToastToQueryClient(queryClient)
 
 async function unregisterServiceWorkers(): Promise<void> {
   try {
@@ -40,7 +44,7 @@ function Gate(): React.ReactElement {
       setTookTooLong(false)
       return
     }
-    const t = setTimeout(() => setTookTooLong(true), 8000)
+    const t = setTimeout(() => setTookTooLong(true), 4000)
     return () => clearTimeout(t)
   }, [loading])
 
@@ -148,10 +152,13 @@ function FullMessage({
 
 export function App(): React.ReactElement {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <Gate />
-      </AuthProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <ErrorToast />
+          <Gate />
+        </AuthProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   )
 }

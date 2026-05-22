@@ -4,6 +4,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth, signOut } from './lib/auth-store'
 import { hasConfig, clearConfig } from './lib/config'
 import { resetSupabaseClient } from './lib/supabase'
+import { ErrorBoundary } from './components/ErrorBoundary'
+import { ErrorToast, attachErrorToastToQueryClient } from './components/ErrorToast'
 import { Login } from './pages/Login'
 import { SetupConfig } from './pages/SetupConfig'
 import { Layout } from './components/Layout'
@@ -30,6 +32,11 @@ const queryClient = new QueryClient({
   },
 })
 
+// Plug global de erros — toast aparece no topo da tela quando qualquer
+// useQuery falha. Sem isso, erros de Supabase ficavam invisíveis e a UI
+// renderizava esqueleto/dados vazios infinitamente sem explicação.
+attachErrorToastToQueryClient(queryClient)
+
 function ConfigGate({ children }: { children: React.ReactNode }): React.ReactElement {
   const [hasIt, setHasIt] = React.useState<boolean>(hasConfig())
   if (!hasIt) return <SetupConfig onSaved={() => setHasIt(true)} />
@@ -38,15 +45,14 @@ function ConfigGate({ children }: { children: React.ReactNode }): React.ReactEle
 
 function AuthGate(): React.ReactElement {
   const { loading, session, profile, profileError } = useAuth()
-  // Timeout pra detectar loading infinito (rede ruim, SW travado, etc.).
-  // Se passar de 8s carregando, mostra fallback com botão de reset.
+  // Se ficar +4s em loading, mostra fallback com botões de reset.
   const [tookTooLong, setTookTooLong] = React.useState(false)
   React.useEffect(() => {
     if (!loading) {
       setTookTooLong(false)
       return
     }
-    const t = setTimeout(() => setTookTooLong(true), 8000)
+    const t = setTimeout(() => setTookTooLong(true), 4000)
     return () => clearTimeout(t)
   }, [loading])
 
@@ -216,14 +222,17 @@ function FullMessage({
 
 export function App(): React.ReactElement {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ConfigGate>
-        <BrowserRouter>
-          <AuthProvider>
-            <AuthGate />
-          </AuthProvider>
-        </BrowserRouter>
-      </ConfigGate>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <ConfigGate>
+          <BrowserRouter>
+            <AuthProvider>
+              <ErrorToast />
+              <AuthGate />
+            </AuthProvider>
+          </BrowserRouter>
+        </ConfigGate>
+      </QueryClientProvider>
+    </ErrorBoundary>
   )
 }
