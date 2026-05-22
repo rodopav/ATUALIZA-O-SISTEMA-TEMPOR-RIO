@@ -16,9 +16,19 @@ export function Layout(): React.ReactElement {
       <Sidebar mobileOpen={menuOpen} onMobileClose={() => setMenuOpen(false)} />
 
       <div className="lg:pl-72">
-        {/* Top bar mobile — só aparece em <lg. safe-top respeita notch/status bar
-            do iOS/Android quando o PWA roda em modo standalone (viewport-fit=cover). */}
-        <header className="safe-top safe-x sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-zinc-800/60 bg-zinc-950/80 px-3 py-2 backdrop-blur lg:hidden">
+        {/* Top bar mobile — só aparece em <lg.
+            pt-[max(...)] usa arbitrary values do Tailwind, garantindo que o
+            padding-top respeite env(safe-area-inset-top) sem ser sobrescrito
+            pelo py-2 (utility tem prioridade sobre component). Sem isso o
+            header gruda atrás do notch/status bar do iOS standalone. */}
+        <header
+          className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-zinc-800/60 bg-zinc-950/80 px-3 pb-2 backdrop-blur lg:hidden"
+          style={{
+            paddingTop: 'max(0.5rem, env(safe-area-inset-top))',
+            paddingLeft: 'max(0.75rem, env(safe-area-inset-left))',
+            paddingRight: 'max(0.75rem, env(safe-area-inset-right))',
+          }}
+        >
           <div className="flex items-center gap-2">
             <MobileMenuButton onClick={() => setMenuOpen(true)} />
             <div className="flex items-center gap-2">
@@ -33,7 +43,14 @@ export function Layout(): React.ReactElement {
           </div>
         </header>
 
-        <main className="safe-x safe-bottom px-3 py-4 sm:px-5 sm:py-5 lg:px-8 lg:py-7">
+        <main
+          className="px-3 py-4 sm:px-5 sm:py-5 lg:px-8 lg:py-7"
+          style={{
+            paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
+            paddingLeft: 'max(0.75rem, env(safe-area-inset-left))',
+            paddingRight: 'max(0.75rem, env(safe-area-inset-right))',
+          }}
+        >
           <div className="mx-auto max-w-5xl">
             <Outlet />
           </div>

@@ -76,13 +76,16 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps): React.Reac
       <aside
         className={cn(
           'fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-zinc-800/80 bg-zinc-950/95 backdrop-blur',
-          'safe-bottom',
           'transition-transform duration-200',
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
         )}
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        {/* Brand — safe-top pra não ficar atrás do notch quando drawer mobile abre */}
-        <div className="safe-top flex items-center justify-between gap-2 border-b border-zinc-800/60 px-4 py-3">
+        {/* Brand — paddingTop com max() pro notch quando drawer mobile abre. */}
+        <div
+          className="flex items-center justify-between gap-2 border-b border-zinc-800/60 px-4 pb-3"
+          style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
+        >
           <div className="flex items-center gap-2.5 min-w-0">
             <img src="/icon-192.png" alt="Rodopav" className="h-9 w-9 shrink-0 rounded-lg" />
             <div className="min-w-0">

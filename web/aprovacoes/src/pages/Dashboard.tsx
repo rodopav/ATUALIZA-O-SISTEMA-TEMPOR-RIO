@@ -43,9 +43,17 @@ export function Dashboard(): React.ReactElement {
   }
 
   return (
-    <div className="safe-screen mx-auto max-w-3xl px-4 pb-12 sm:px-6">
-      {/* Top bar — usa pt-2 já que o safe-screen já adicionou safe-area-inset-top */}
-      <header className="mb-4 flex items-center justify-between gap-3 pt-2">
+    <div
+      className="mx-auto max-w-3xl px-4 pb-12 sm:px-6"
+      style={{
+        paddingTop: 'max(0.75rem, env(safe-area-inset-top))',
+        paddingBottom: 'max(3rem, env(safe-area-inset-bottom))',
+        paddingLeft: 'max(1rem, env(safe-area-inset-left))',
+        paddingRight: 'max(1rem, env(safe-area-inset-right))',
+      }}
+    >
+      {/* Container raiz já paga o safe-area-inset-top — header só precisa de margem normal */}
+      <header className="mb-4 flex items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
             <p className="label-eyebrow">Aprovações · Rodopav</p>
