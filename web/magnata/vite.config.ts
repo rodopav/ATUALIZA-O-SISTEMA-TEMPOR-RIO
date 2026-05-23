@@ -5,7 +5,15 @@ import { VitePWA } from 'vite-plugin-pwa'
 // Magnata PWA — dashboard executivo do grupo Rodopav.
 // Builds estático que a Vercel serve direto do CDN.
 // PWA instalável (Add to Home Screen) com cache offline básico.
+// APP_BUILD_TIME: timestamp injetado no bundle no momento do build.
+// Cada deploy gera valor novo. Usado em main.tsx pra detectar SW velho e
+// limpar caches automaticamente sem o usuário precisar fazer nada.
+const APP_BUILD_TIME = JSON.stringify(new Date().toISOString())
+
 export default defineConfig({
+  define: {
+    __APP_BUILD_TIME__: APP_BUILD_TIME,
+  },
   plugins: [
     react(),
     VitePWA({
