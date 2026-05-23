@@ -143,5 +143,21 @@ export async function signIn(email: string, senha: string): Promise<void> {
 }
 
 export async function signOut(): Promise<void> {
-  await supabase.auth.signOut()
+  // Defesa: se supabase.auth.signOut() travar (lock interno), apaga
+  // localStorage manualmente após 2s e força reload.
+  const timeout = new Promise<void>((resolve) => setTimeout(resolve, 2000))
+  try {
+    await Promise.race([supabase.auth.signOut(), timeout])
+  } catch {
+    // ignore
+  }
+  try {
+    localStorage.removeItem('rodopav-aprovacoes-auth')
+    Object.keys(localStorage).forEach((k) => {
+      if (k.startsWith('sb-') && k.endsWith('-auth-token')) localStorage.removeItem(k)
+    })
+  } catch {
+    // ignore
+  }
+  window.location.href = '/'
 }

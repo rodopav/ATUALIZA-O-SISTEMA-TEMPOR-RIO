@@ -175,5 +175,25 @@ export async function signIn(email: string, senha: string): Promise<void> {
 }
 
 export async function signOut(): Promise<void> {
-  await supabase.auth.signOut()
+  // Defesa: se supabase.auth.signOut() travar (lock interno), apaga
+  // localStorage manualmente após 2s e força reload. Garante que o
+  // botão "Sair" sempre desloga, mesmo se o client estiver bugado.
+  const timeout = new Promise<void>((resolve) => setTimeout(resolve, 2000))
+  try {
+    await Promise.race([supabase.auth.signOut(), timeout])
+  } catch (e) {
+    log('signOut error (ignorado)', e)
+  }
+  // Garante limpeza local mesmo se signOut do server falhou
+  try {
+    localStorage.removeItem('rodopav-magnata-auth')
+    // Limpa também chaves automáticas que o gotrue cria
+    Object.keys(localStorage).forEach((k) => {
+      if (k.startsWith('sb-') && k.endsWith('-auth-token')) localStorage.removeItem(k)
+    })
+  } catch {
+    // ignore
+  }
+  // Reload pra estado limpo
+  window.location.href = '/'
 }

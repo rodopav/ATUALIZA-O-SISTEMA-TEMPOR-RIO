@@ -1,15 +1,27 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { getConfig } from './config'
 
-// Cliente lazy — só instancia quando a config existe. Se o usuário trocar
-// URL/key via SetupConfig, chama `resetSupabaseClient()` pra rebuildar.
-let _client: SupabaseClient | null = null
-let _builtFor: string | null = null
+/**
+ * Lock no-op pro Supabase Auth.
+ *
+ * Por padrão o Supabase JS usa navigator.locks pra prevenir race conditions
+ * entre múltiplas abas / múltiplas chamadas concorrentes do auth (getSession,
+ * refreshToken, etc.). Em alguns navegadores (PWA standalone, iOS, Edge com
+ * SW velho), o lock fica preso e TODAS as chamadas subsequentes esperam
+ * indefinidamente — getSession() nunca resolve.
+ *
+ * Substituir por um lock no-op (executa imediatamente sem coordenar entre
+ * abas) corrige o deadlock. Risco mínimo pra single-tab apps: race entre
+ * abas é improvável e o pior caso é um refresh token ser usado 2x (Supabase
+ * trata isso gracefully).
+ */
+const noopLock = async <R>(_name: string, _acquireTimeout: number, fn: () => Promise<R>): Promise<R> => {
+  return await fn()
+}
 
 function build(): SupabaseClient {
   const cfg = getConfig()
   if (!cfg) {
-    // Cliente "vazio" — só pra evitar crash caso algo seja chamado antes do gate.
     return createClient('https://invalid.invalid', 'invalid', {
       auth: { persistSession: false },
     })
@@ -18,33 +30,25 @@ function build(): SupabaseClient {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
-      // FALSO porque não usamos OAuth/magic link. Quando true e a URL tem
-      // hash ou query strings residuais (volta do SW, refresh, etc.), Supabase
-      // tenta processar como callback OAuth e pode entrar em loop tentando
-      // limpar a URL. Login é email+senha, não precisa detectar nada na URL.
       detectSessionInUrl: false,
-      // Storage key fixa: a sessão persiste entre reloads e re-instalações do PWA.
       storageKey: 'rodopav-magnata-auth',
       storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-      flowType: 'pkce',
+      // ★ FIX deadlock: ver comentário do noopLock acima.
+      lock: noopLock,
     },
   })
 }
 
-export const supabase: SupabaseClient = new Proxy({} as SupabaseClient, {
-  get(_target, prop, receiver) {
-    const cfg = getConfig()
-    const key = cfg?.url ?? null
-    if (!_client || _builtFor !== key) {
-      _client = build()
-      _builtFor = key
-    }
-    const value = Reflect.get(_client as object, prop, receiver)
-    return typeof value === 'function' ? value.bind(_client) : value
-  },
-})
+// Singleton — uma instância pra toda a app. Mudar de config requer reload
+// da página (clearConfig() + window.location.reload(), feito no Sidebar).
+export const supabase: SupabaseClient = build()
 
+/**
+ * @deprecated mantido pra compatibilidade. Em vez de chamar isso, faça
+ * `clearConfig(); window.location.reload()` — o singleton recria limpo
+ * na próxima carga.
+ */
 export function resetSupabaseClient(): void {
-  _client = null
-  _builtFor = null
+  // No-op intencional. A app inteira é recriada via reload, não há
+  // necessidade de trocar instância em runtime.
 }
