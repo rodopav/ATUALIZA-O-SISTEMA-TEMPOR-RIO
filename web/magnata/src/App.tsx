@@ -91,7 +91,7 @@ function AuthGate(): React.ReactElement {
     return (
       <FullMessage
         title="Acesso restrito"
-        descricao="Magnata é cockpit executivo. Sua conta precisa da flag is_magnata ativa."
+        descricao="Sua conta não tem permissão pra acessar este cockpit. Contate o administrador."
       />
     )
   }

@@ -12,19 +12,26 @@ export interface SupabaseConfig {
 }
 
 /**
- * Lê a config efetiva. Prioridade:
- *   1. localStorage (gravado via SetupConfig)
- *   2. Env var VITE_SUPABASE_* (default do build)
+ * Lê a config efetiva. Prioridade INVERTIDA pra reduzir vetor de
+ * roubo de anon key via XSS / extensão maliciosa / screenshot:
+ *
+ *   1. Env var VITE_SUPABASE_* (gravada no build da Vercel, mesma origem do app)
+ *   2. localStorage (fallback pra setup manual em ambiente sem env)
  *   3. null — força tela de setup
+ *
+ * Com env var no build, a anon key vai no bundle (padrão Supabase) e
+ * NÃO é gravada no localStorage do browser do CFO. Mesmo que apareça
+ * uma XSS no app, o atacante não consegue ler a chave do localStorage
+ * (porque ela não está lá), apenas do bundle JS — que já é público.
  */
 export function getConfig(): SupabaseConfig | null {
-  const lsUrl = typeof window !== 'undefined' ? localStorage.getItem(URL_KEY) : null
-  const lsKey = typeof window !== 'undefined' ? localStorage.getItem(KEY_KEY) : null
-  if (lsUrl && lsKey) return { url: lsUrl, anonKey: lsKey }
-
   const envUrl = import.meta.env.VITE_SUPABASE_URL
   const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY
   if (envUrl && envKey) return { url: envUrl, anonKey: envKey }
+
+  const lsUrl = typeof window !== 'undefined' ? localStorage.getItem(URL_KEY) : null
+  const lsKey = typeof window !== 'undefined' ? localStorage.getItem(KEY_KEY) : null
+  if (lsUrl && lsKey) return { url: lsUrl, anonKey: lsKey }
 
   return null
 }

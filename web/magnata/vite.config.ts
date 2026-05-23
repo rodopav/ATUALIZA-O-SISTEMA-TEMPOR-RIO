@@ -45,14 +45,18 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         runtimeCaching: [
           {
-            // Supabase REST: network-first com timeout 5s, fallback cache.
+            // Supabase REST: NetworkOnly. Dado financeiro sensível NÃO deve
+            // ficar cacheado no dispositivo. Quem tiver acesso ao device
+            // (físico ou via XSS) leria valores de saldo/tesouraria offline
+            // em Cache Storage. Trade-off: o app não funciona offline pra
+            // dados Supabase, mas isso é certo pra cockpit financeiro.
             urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'supabase-rest',
-              networkTimeoutSeconds: 5,
-              expiration: { maxEntries: 50, maxAgeSeconds: 60 * 5 },
-            },
+            handler: 'NetworkOnly',
+          },
+          {
+            // Auth/Realtime/Storage do Supabase também NetworkOnly.
+            urlPattern: /^https:\/\/.*\.supabase\.co\/(auth|realtime|storage)\/.*/i,
+            handler: 'NetworkOnly',
           },
           {
             // HTML do shell — sempre tenta rede antes (evita servir HTML antigo
