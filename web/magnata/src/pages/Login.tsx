@@ -1,8 +1,6 @@
 import * as React from 'react'
-import { Lock, Mail, AlertCircle, Settings } from 'lucide-react'
+import { Lock, Mail, AlertCircle } from 'lucide-react'
 import { signIn } from '../lib/auth-store'
-import { clearConfig, getConfig } from '../lib/config'
-import { resetSupabaseClient } from '../lib/supabase'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { Card } from '../components/ui/Card'
@@ -84,24 +82,8 @@ export function Login(): React.ReactElement {
           </form>
 
           <p className="mt-6 text-center text-xs text-zinc-500">
-            Acesso apenas para usuários com flag <code className="font-mono">is_magnata</code> ativa.
+            Acesso restrito a usuários autorizados.
           </p>
-
-          <div className="mt-4 flex items-center justify-center gap-1.5 border-t border-zinc-800/60 pt-3">
-            <Settings className="h-3 w-3 text-zinc-600" />
-            <button
-              type="button"
-              onClick={() => {
-                if (!confirm('Trocar de conexão Supabase? Você precisará digitar URL+chave de novo.')) return
-                clearConfig()
-                resetSupabaseClient()
-                window.location.reload()
-              }}
-              className="text-[10px] uppercase tracking-wider text-zinc-500 hover:text-zinc-300"
-            >
-              Trocar de conexão · {getConfig()?.url.replace(/^https?:\/\//, '').slice(0, 32) ?? '—'}
-            </button>
-          </div>
         </div>
       </Card>
     </div>

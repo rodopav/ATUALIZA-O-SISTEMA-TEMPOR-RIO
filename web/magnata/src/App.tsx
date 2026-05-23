@@ -2,8 +2,7 @@ import * as React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth, signOut } from './lib/auth-store'
-import { hasConfig, clearConfig } from './lib/config'
-import { resetSupabaseClient } from './lib/supabase'
+import { hasConfig } from './lib/config'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { ErrorToast, attachErrorToastToQueryClient } from './components/ErrorToast'
 import { Login } from './pages/Login'
@@ -140,17 +139,6 @@ function StuckScreen(): React.ReactElement {
             className="rounded-md border border-zinc-700 px-4 py-2 text-xs text-zinc-300 hover:bg-zinc-800/40"
           >
             Limpar cache do app + recarregar
-          </button>
-          <button
-            onClick={() => {
-              if (!confirm('Trocar conexão Supabase? Vai precisar digitar URL+chave de novo.')) return
-              clearConfig()
-              resetSupabaseClient()
-              window.location.reload()
-            }}
-            className="text-[10px] uppercase tracking-wider text-zinc-500 hover:text-zinc-300"
-          >
-            Trocar conexão Supabase
           </button>
         </div>
       </div>

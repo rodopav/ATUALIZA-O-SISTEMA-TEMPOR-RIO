@@ -12,11 +12,8 @@ import {
   Menu,
   X,
   LogOut,
-  Settings,
 } from 'lucide-react'
 import { signOut, useAuth } from '../lib/auth-store'
-import { clearConfig } from '../lib/config'
-import { resetSupabaseClient } from '../lib/supabase'
 import { cn } from '../lib/cn'
 
 interface NavItem {
@@ -50,13 +47,6 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps): React.Reac
     onMobileClose()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname])
-
-  const trocarConexao = (): void => {
-    if (!confirm('Trocar de conexão Supabase? Você precisará fazer login novamente.')) return
-    clearConfig()
-    resetSupabaseClient()
-    window.location.href = '/'
-  }
 
   const sair = async (): Promise<void> => {
     await signOut()
@@ -143,13 +133,6 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps): React.Reac
               </p>
             </div>
           </div>
-          <button
-            onClick={trocarConexao}
-            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-[11px] text-zinc-400 hover:bg-zinc-800/40 hover:text-zinc-100"
-          >
-            <Settings className="h-3 w-3" />
-            Trocar conexão
-          </button>
           <button
             onClick={() => void sair()}
             className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-[11px] text-zinc-400 hover:bg-red-500/10 hover:text-red-400"
