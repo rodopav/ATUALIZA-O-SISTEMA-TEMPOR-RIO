@@ -6,7 +6,8 @@ export type SolicitacaoStatus = 'PENDENTE' | 'APROVADA' | 'REJEITADA'
 export interface Solicitacao {
   id: string
   created_at: string
-  decidida_em: string | null
+  /** quando admin aprovou ou rejeitou (banco: resolvida_em) */
+  resolvida_em: string | null
   status: SolicitacaoStatus
   valor: number
   descricao: string
@@ -25,19 +26,26 @@ export interface Solicitacao {
     id: string
     apelido: string
   } | null
-  responsavel: {
+  /** Quem aprovou/rejeitou (banco: resolvida_por). null se ainda PENDENTE. */
+  resolvedor: {
     id: string
     nome_completo: string
   } | null
 }
 
+// Nomes das FKs reais (verificadas no pg_constraint):
+//   solicitacoes_saldo_solicitante_id_fkey
+//   solicitacoes_saldo_conta_destino_id_fkey
+//   solicitacoes_saldo_conta_origem_sugerida_id_fkey
+//   solicitacoes_saldo_resolvida_por_fkey
+// PostgREST silenciosamente falha a query inteira se a FK name não bater.
 const SELECT = `
-  id, created_at, decidida_em, status, valor, descricao,
+  id, created_at, resolvida_em, status, valor, descricao,
   motivo_rejeicao, aprovada_em_ausencia, liberada_em_ausencia_em,
-  solicitante:profiles!solicitacoes_saldo_solicitante_id_profiles_fkey(id, nome_completo),
+  solicitante:profiles!solicitacoes_saldo_solicitante_id_fkey(id, nome_completo),
   conta_destino:contas_bancarias!solicitacoes_saldo_conta_destino_id_fkey(id, apelido),
   conta_origem_sugerida:contas_bancarias!solicitacoes_saldo_conta_origem_sugerida_id_fkey(id, apelido),
-  responsavel:profiles!solicitacoes_saldo_responsavel_id_profiles_fkey(id, nome_completo)
+  resolvedor:profiles!solicitacoes_saldo_resolvida_por_fkey(id, nome_completo)
 `
 
 function pickNum(v: unknown): number {
@@ -49,7 +57,7 @@ function mapRow(r: any): Solicitacao {
   return {
     id: r.id,
     created_at: r.created_at,
-    decidida_em: r.decidida_em,
+    resolvida_em: r.resolvida_em,
     status: r.status,
     valor: pickNum(r.valor),
     descricao: r.descricao ?? '',
@@ -59,7 +67,7 @@ function mapRow(r: any): Solicitacao {
     solicitante: r.solicitante ?? null,
     conta_destino: r.conta_destino ?? null,
     conta_origem_sugerida: r.conta_origem_sugerida ?? null,
-    responsavel: r.responsavel ?? null,
+    resolvedor: r.resolvedor ?? null,
   }
 }
 
@@ -101,7 +109,7 @@ export const solicitacoesHistoricoQuery = queryOptions({
       .from('solicitacoes_saldo')
       .select(SELECT)
       .in('status', ['APROVADA', 'REJEITADA'])
-      .order('decidida_em', { ascending: false })
+      .order('resolvida_em', { ascending: false })
       .limit(50)
     if (error) throw error
     return ((data ?? []) as any[]).map(mapRow)
