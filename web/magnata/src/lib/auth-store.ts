@@ -2,6 +2,11 @@ import * as React from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 
+const DEBUG = true
+function log(...args: unknown[]): void {
+  if (DEBUG) console.log('[auth]', ...args)
+}
+
 interface ProfileInfo {
   id: string
   nome_completo: string
@@ -16,7 +21,6 @@ interface AuthState {
   user: User | null
   session: Session | null
   profile: ProfileInfo | null
-  /** Erro fatal ao carregar perfil. App.tsx mostra mensagem de erro em vez de spinner infinito. */
   profileError: string | null
 }
 
@@ -40,21 +44,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
   const loadProfile = React.useCallback(
     async (userId: string): Promise<{ profile: ProfileInfo | null; error: string | null }> => {
       try {
+        log('loadProfile start', userId)
         const { data, error } = await supabase
           .from('profiles')
           .select('id, nome_completo, is_magnata, is_superadmin, role, ativo')
           .eq('id', userId)
           .single()
         if (error) {
-          // PostgREST 401/JWT expired → não é erro fatal, espera refresh
+          log('loadProfile error', error)
           if (error.code === 'PGRST301' || error.message.includes('JWT')) {
             return { profile: null, error: null }
           }
           return { profile: null, error: error.message }
         }
         if (!data) return { profile: null, error: 'Perfil não encontrado' }
+        log('loadProfile ok', data)
         return { profile: data as unknown as ProfileInfo, error: null }
       } catch (e) {
+        log('loadProfile exception', e)
         return { profile: null, error: e instanceof Error ? e.message : String(e) }
       }
     },
@@ -63,21 +70,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
 
   React.useEffect(() => {
     let mounted = true
+    log('AuthProvider mount')
 
     const setSafely = (next: AuthState): void => {
-      if (mounted) setState(next)
+      if (mounted) {
+        log('setState', { loading: next.loading, hasSession: !!next.session, hasProfile: !!next.profile, error: next.profileError })
+        setState(next)
+      }
     }
+
+    // ★ FAILSAFE: se passar 7s e loading ainda true, força false. Garante
+    // que NUNCA fica preso em spinner infinito mesmo se getSession travar.
+    const failsafe = setTimeout(() => {
+      if (!mounted) return
+      log('FAILSAFE: forçando loading=false após 7s')
+      setState((prev) =>
+        prev.loading
+          ? { ...prev, loading: false, profileError: prev.profileError ?? 'Conexão demorou demais (failsafe)' }
+          : prev,
+      )
+    }, 7000)
 
     void (async () => {
       try {
+        log('getSession start')
         const { data, error } = await supabase.auth.getSession()
+        log('getSession result', { hasSession: !!data?.session, error })
         if (!mounted) return
         if (error) {
-          setSafely({ loading: false, session: null, user: null, profile: null, profileError: null })
+          setSafely({ loading: false, session: null, user: null, profile: null, profileError: error.message })
           return
         }
         if (data.session?.user) {
           const { profile, error: profErr } = await loadProfile(data.session.user.id)
+          if (!mounted) return
           setSafely({
             loading: false,
             session: data.session,
@@ -89,8 +115,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
           setSafely({ loading: false, session: null, user: null, profile: null, profileError: null })
         }
       } catch (e) {
-        // Garante que NUNCA fica preso em loading=true
-        console.error('[auth] getSession falhou:', e)
+        log('getSession exception', e)
+        if (!mounted) return
         setSafely({
           loading: false,
           session: null,
@@ -102,10 +128,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
     })()
 
     const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
+      log('auth event', event, { hasSession: !!session })
       if (!mounted) return
-      // TOKEN_REFRESHED não precisa re-load profile, só atualiza session
       if (event === 'TOKEN_REFRESHED' && session) {
-        setState((prev) => ({ ...prev, session, user: session.user }))
+        setState((prev) => ({ ...prev, session, user: session.user, loading: false }))
+        return
+      }
+      if (event === 'INITIAL_SESSION') {
+        // INITIAL_SESSION também dispara — useEffect inicial já cuida disso
         return
       }
       if (session?.user) {
@@ -125,7 +155,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
     })
 
     return () => {
+      log('AuthProvider unmount')
       mounted = false
+      clearTimeout(failsafe)
       sub.subscription.unsubscribe()
     }
   }, [loadProfile])
