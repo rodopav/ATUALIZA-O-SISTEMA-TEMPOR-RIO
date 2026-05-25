@@ -81,7 +81,7 @@ export function Login(): React.ReactElement {
           </form>
 
           <p className="mt-6 text-center text-xs text-zinc-500">
-            Acesso restrito a responsáveis financeiros (admin_financeiro / superadmin).
+            Acesso restrito a responsáveis financeiros autorizados.
           </p>
         </div>
       </Card>

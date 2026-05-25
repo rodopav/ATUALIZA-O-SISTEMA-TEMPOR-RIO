@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 import { precacheAndRoute, cleanupOutdatedCaches, createHandlerBoundToURL } from 'workbox-precaching'
 import { NavigationRoute, registerRoute } from 'workbox-routing'
-import { NetworkFirst } from 'workbox-strategies'
+import { NetworkOnly } from 'workbox-strategies'
 import { clientsClaim } from 'workbox-core'
 
 declare const self: ServiceWorkerGlobalScope
@@ -20,13 +20,20 @@ const navRoute = new NavigationRoute(navHandler, {
 })
 registerRoute(navRoute)
 
-// Supabase REST: network-first com fallback de cache (offline básico).
+// Supabase REST/auth/realtime/storage: NetworkOnly.
+//
+// Dado financeiro (fila de solicitações, valores, contas envolvidas) NÃO
+// deve ficar em Cache Storage do device. Quem tiver acesso ao celular
+// (físico ou via XSS) leria a fila offline. Trade-off: app não funciona
+// offline pra dados Supabase, mas é o certo pra fluxo de aprovação.
 registerRoute(
-  ({ url }) => url.hostname.endsWith('.supabase.co') && url.pathname.startsWith('/rest/'),
-  new NetworkFirst({
-    cacheName: 'supabase-rest',
-    networkTimeoutSeconds: 5,
-  }),
+  ({ url }) => url.hostname.endsWith('.supabase.co') && (
+    url.pathname.startsWith('/rest/') ||
+    url.pathname.startsWith('/auth/') ||
+    url.pathname.startsWith('/realtime/') ||
+    url.pathname.startsWith('/storage/')
+  ),
+  new NetworkOnly(),
 )
 
 self.skipWaiting()

@@ -74,7 +74,7 @@ function Gate(): React.ReactElement {
     return (
       <FullMessage
         title="Acesso restrito"
-        descricao="Aprovações é só para admin_financeiro ou superadmin."
+        descricao="Sua conta não tem permissão pra acessar este app. Contate o administrador."
       />
     )
   }
