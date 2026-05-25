@@ -173,23 +173,24 @@ export async function preverCascadeAusencia(id: string): Promise<CascadePreview>
 export interface ContaSugerida {
   id: string
   apelido: string
-  banco: string | null
-  empresa: string | null
+  isCaixaFisico: boolean
 }
 
+// v_contas_lookup tem apenas id/apelido/is_caixa_fisico (sem `banco` nem
+// `empresa` — ver pg_views). Antes pedia colunas inexistentes e a query
+// falhava com "column v_contas_lookup.banco does not exist".
 export const contasParaOrigemQuery = queryOptions({
   queryKey: ['contas', 'para-origem'] as const,
   queryFn: async (): Promise<ContaSugerida[]> => {
     const { data, error } = await supabase
       .from('v_contas_lookup')
-      .select('id, apelido, banco')
+      .select('id, apelido, is_caixa_fisico')
       .order('apelido', { ascending: true })
     if (error) throw error
     return ((data ?? []) as any[]).map((r) => ({
       id: r.id,
       apelido: r.apelido,
-      banco: r.banco,
-      empresa: null,
+      isCaixaFisico: Boolean(r.is_caixa_fisico),
     }))
   },
   staleTime: 5 * 60_000,
