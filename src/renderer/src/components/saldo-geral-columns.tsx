@@ -9,6 +9,12 @@ import type { SaldoGeralRow } from '../lib/queries'
 const TRANSF_TOOLTIP =
   'Transferências entre contas próprias — não contam como entrada/saída operacional.'
 
+const SALDO_ANTERIOR_TOOLTIP =
+  'Saldo da conta no dia ANTES do início do período filtrado. Não é o "saldo inicial cadastrado" — é o resultado acumulado de TODOS os lançamentos anteriores ao filtro.'
+
+const SALDO_FINAL_TOOLTIP =
+  'Saldo da conta no FIM do período filtrado. Para ver o saldo de hoje, use o filtro até a data de hoje.'
+
 export function buildSaldoGeralColumns(): ColumnDef<SaldoGeralRow>[] {
   return [
     {
@@ -27,7 +33,11 @@ export function buildSaldoGeralColumns(): ColumnDef<SaldoGeralRow>[] {
     },
     {
       accessorKey: 'saldo_inicial',
-      header: () => <div className="text-right">Saldo inicial</div>,
+      header: () => (
+        <div className="text-right" title={SALDO_ANTERIOR_TOOLTIP}>
+          Saldo anterior
+        </div>
+      ),
       cell: (ctx) => (
         <div className="text-right tabular-nums text-foreground">
           {formatBRL(ctx.getValue<number | null>() ?? 0)}
@@ -114,7 +124,11 @@ export function buildSaldoGeralColumns(): ColumnDef<SaldoGeralRow>[] {
     },
     {
       accessorKey: 'saldo_atual',
-      header: () => <div className="text-right">Saldo atual</div>,
+      header: () => (
+        <div className="text-right" title={SALDO_FINAL_TOOLTIP}>
+          Saldo final
+        </div>
+      ),
       cell: (ctx) => (
         <div className="text-right font-semibold tabular-nums text-foreground">
           {formatBRL(ctx.getValue<number | null>() ?? 0)}
