@@ -152,6 +152,53 @@ export async function conciliarLancamento(input: ConciliarInput): Promise<void> 
   }
 }
 
+export interface ConciliarBatchInput {
+  ids: string[]
+  profileId: string
+  observacao?: string | null
+}
+
+export interface ConciliarBatchResult {
+  /** IDs efetivamente conciliados (consideram RLS — quem o backend deixou). */
+  conciliados: string[]
+  /** IDs que NÃO foram conciliados (RLS / não existem / já estavam conciliados). */
+  falhou: string[]
+}
+
+/**
+ * Concilia vários lançamentos numa única chamada via `.in('id', ids)`.
+ * Mais rápido que um loop client-side (1 request × N) e atômico no banco.
+ *
+ * Os IDs que NÃO retornam no `data` são considerados "falhou" — caso a RLS
+ * bloqueie silenciosamente algum, o caller mostra isso pro usuário em vez
+ * de fingir que tudo deu certo.
+ */
+export async function conciliarLancamentosBatch(
+  input: ConciliarBatchInput,
+): Promise<ConciliarBatchResult> {
+  if (input.ids.length === 0) {
+    return { conciliados: [], falhou: [] }
+  }
+  const updates = {
+    conciliado_em: new Date().toISOString(),
+    conciliado_por: input.profileId,
+    conciliacao_observacao: input.observacao?.trim() || null,
+  }
+  const { data, error } = await supabase
+    .from('lancamentos')
+    .update(updates)
+    .in('id', input.ids)
+    // Só pega quem ainda estava pendente — evita re-conciliar e gastar
+    // updates à toa quando o usuário marca um já conciliado por engano.
+    .is('conciliado_em', null)
+    .select('id')
+  if (error) throw error
+  const conciliadosSet = new Set((data ?? []).map((r) => r.id))
+  const conciliados = input.ids.filter((id) => conciliadosSet.has(id))
+  const falhou = input.ids.filter((id) => !conciliadosSet.has(id))
+  return { conciliados, falhou }
+}
+
 export async function desfazerConciliacao(id: string): Promise<void> {
   const { data, error } = await supabase
     .from('lancamentos')

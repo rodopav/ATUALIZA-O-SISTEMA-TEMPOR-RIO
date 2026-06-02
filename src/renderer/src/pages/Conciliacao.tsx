@@ -1,21 +1,25 @@
 import * as React from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   CheckCircle2,
   AlertCircle,
   TrendingUp,
   XCircle,
+  X,
 } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
 import { Button } from '../components/ui/button'
 import { Card, CardContent } from '../components/ui/card'
 import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert'
+import { Spinner } from '../components/ui/spinner'
+import { toast } from '../components/ui/use-toast'
 import { StatCard } from '../components/dashboards/StatCard'
 import { PendentesTable } from '../components/conciliacao/PendentesTable'
 import { ConciliarPendenteModal } from '../components/conciliacao/ConciliarPendenteModal'
 import {
   pendentesQuery,
   conciliacaoResumoQuery,
+  conciliarLancamentosBatch,
   type PendenteConciliacaoRow,
   type PendentesFilters,
 } from '../lib/conciliacao-queries'
@@ -30,6 +34,7 @@ import {
 import { ContaFilter } from '../components/filters/ContaFilter'
 import { mapError } from '../lib/error-mapper'
 import { usePageFilters } from '../lib/filters-store'
+import { useAuthStore } from '../lib/auth-store'
 
 interface ConciliacaoFilters {
   periodo: PeriodoFilterValue
@@ -44,6 +49,8 @@ const defaultConciliacaoFilters: ConciliacaoFilters = {
 export function ConciliacaoPage(): React.ReactElement {
   const f = usePageFilters('conciliacao', defaultConciliacaoFilters)
   const { periodo, contaId } = f.value
+  const profile = useAuthStore((s) => s.profile)
+  const qc = useQueryClient()
 
   const setPeriodo = React.useCallback(
     (next: PeriodoFilterValue) => f.set({ periodo: next }),
@@ -58,6 +65,7 @@ export function ConciliacaoPage(): React.ReactElement {
     null,
   )
   const [dialogOpen, setDialogOpen] = React.useState(false)
+  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set())
 
   const filters: PendentesFilters = React.useMemo(() => {
     const bounds = periodoBounds(periodo)
@@ -71,6 +79,12 @@ export function ConciliacaoPage(): React.ReactElement {
     }
     return { periodo: periodo.mesIso, contaId }
   }, [periodo, contaId])
+
+  // Limpa seleção quando os filtros mudam — IDs antigos podem nem estar
+  // mais na lista visível, então melhor zerar pra não conciliar fantasma.
+  React.useEffect(() => {
+    setSelectedIds(new Set())
+  }, [filters])
 
   const pendentesQ = useQuery(pendentesQuery(filters))
   const resumoQ = useQuery(conciliacaoResumoQuery(filters))
@@ -88,6 +102,84 @@ export function ConciliacaoPage(): React.ReactElement {
     },
     [],
   )
+
+  const toggleOne = React.useCallback((id: string): void => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  const toggleAll = React.useCallback((visibleIds: string[]): void => {
+    setSelectedIds((prev) => {
+      const allSelected = visibleIds.every((id) => prev.has(id))
+      if (allSelected) {
+        // desmarca só os visíveis (preserva eventuais selecionados fora dessa página)
+        const next = new Set(prev)
+        visibleIds.forEach((id) => next.delete(id))
+        return next
+      }
+      // marca todos os visíveis
+      const next = new Set(prev)
+      visibleIds.forEach((id) => next.add(id))
+      return next
+    })
+  }, [])
+
+  const clearSelection = React.useCallback(() => setSelectedIds(new Set()), [])
+
+  const bulkMutation = useMutation({
+    mutationFn: async (): Promise<{
+      conciliados: string[]
+      falhou: string[]
+    }> => {
+      if (!profile) throw new Error('Sessão expirada.')
+      const ids = Array.from(selectedIds)
+      if (ids.length === 0) {
+        return { conciliados: [], falhou: [] }
+      }
+      return conciliarLancamentosBatch({
+        ids,
+        profileId: profile.id,
+        observacao: null,
+      })
+    },
+    onSuccess: ({ conciliados, falhou }) => {
+      void qc.invalidateQueries({
+        queryKey: ['conciliacao'],
+        refetchType: 'active',
+      })
+      void qc.invalidateQueries({
+        queryKey: ['lancamentos'],
+        refetchType: 'active',
+      })
+      setSelectedIds(new Set())
+      if (falhou.length === 0) {
+        toast({
+          title: `${conciliados.length} ${conciliados.length === 1 ? 'lançamento conciliado' : 'lançamentos conciliados'}`,
+          variant: 'success',
+        })
+      } else {
+        toast({
+          title: `${conciliados.length} conciliados • ${falhou.length} falharam`,
+          description:
+            'Verifique se você tem permissão pra conciliar todas as contas envolvidas.',
+          variant: 'warning',
+        })
+      }
+    },
+    onError: (err) => {
+      toast({
+        title: 'Erro ao conciliar em lote',
+        description: mapError(err).description,
+        variant: 'destructive',
+      })
+    },
+  })
+
+  const selectedCount = selectedIds.size
 
   const resumo = resumoQ.data
   const percentualLabel = resumo
@@ -157,9 +249,49 @@ export function ConciliacaoPage(): React.ReactElement {
             data={pendentesQ.data ?? []}
             loading={pendentesQ.isLoading}
             onConciliar={handleConciliar}
+            selectedIds={selectedIds}
+            onToggleOne={toggleOne}
+            onToggleAll={toggleAll}
           />
         </CardContent>
       </Card>
+
+      {/* Barra flutuante de ação em lote — só aparece quando há seleção. */}
+      {selectedCount > 0 ? (
+        <div
+          className="pointer-events-none fixed inset-x-0 bottom-6 z-30 flex justify-center px-4"
+          aria-live="polite"
+        >
+          <div className="pointer-events-auto flex flex-wrap items-center gap-3 rounded-full border border-border bg-card px-4 py-2 shadow-lg sm:py-3">
+            <span className="text-sm font-medium text-foreground">
+              {selectedCount}{' '}
+              {selectedCount === 1 ? 'selecionado' : 'selecionados'}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              Conciliar em lote sem observação.
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={clearSelection}
+              disabled={bulkMutation.isPending}
+            >
+              <X className="h-3.5 w-3.5" />
+              Limpar
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => bulkMutation.mutate()}
+              disabled={bulkMutation.isPending}
+            >
+              {bulkMutation.isPending ? <Spinner /> : <CheckCircle2 className="h-4 w-4" />}
+              Conciliar {selectedCount}
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       <ConciliarPendenteModal
         open={dialogOpen}
