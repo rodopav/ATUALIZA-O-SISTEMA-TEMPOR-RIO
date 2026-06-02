@@ -30,6 +30,16 @@ interface ContaSelectorsProps {
   origemSelected: string | null
   destinoSelected: string | null
   disabled?: boolean
+  /**
+   * Quando estamos editando um lançamento existente, o `saldo_atual` da
+   * conta de origem JÁ tem o valor desse lançamento debitado — somar de
+   * volta pra calcular o aviso de saldo insuficiente, espelhando o trigger
+   * `enforce_saldo_suficiente` (que faz `v_saldo := v_saldo + OLD.valor`
+   * em UPDATE). Sem isso a UI engana o usuário toda vez que vai editar.
+   * Só vale se a conta de origem não mudou — se mudou, a saldo da nova
+   * conta nunca teve esse lançamento.
+   */
+  editing?: { valor: number; contaOrigemId: string | null } | null
 }
 
 export function ContaSelectors({
@@ -40,6 +50,7 @@ export function ContaSelectors({
   origemSelected,
   destinoSelected,
   disabled,
+  editing,
 }: ContaSelectorsProps): React.ReactElement {
   const contasSaldoQ = useQuery(contasSaldoQuery)
   const empresasQ = useQuery(empresasQuery)
@@ -79,14 +90,25 @@ export function ContaSelectors({
   )
 
   const isTransferencia = showOrigem && showDestino
+
+  // Saldo efetivo da origem pra checagem: em edição, devolve o valor do
+  // lançamento sendo editado caso a conta de origem não tenha mudado.
+  const effectiveSaldoOrigem = React.useMemo(() => {
+    if (!origemConta || origemConta.saldo_atual === null) return null
+    if (editing && editing.contaOrigemId === origemConta.conta_id) {
+      return origemConta.saldo_atual + editing.valor
+    }
+    return origemConta.saldo_atual
+  }, [origemConta, editing])
+
   const showInsufficientWarning =
     showOrigem &&
     !!origemConta &&
     origemConta.tipo !== 'CARTAO_CREDITO_CONTA' &&
     typeof valor === 'number' &&
     valor > 0 &&
-    origemConta.saldo_atual !== null &&
-    valor > origemConta.saldo_atual &&
+    effectiveSaldoOrigem !== null &&
+    valor > effectiveSaldoOrigem &&
     (natureza === 'SAIDA' || isTransferencia)
 
   return (
@@ -131,11 +153,17 @@ export function ContaSelectors({
                 <AlertTriangle className="h-4 w-4" />
                 <AlertTitle>Saldo insuficiente previsto</AlertTitle>
                 <AlertDescription>
-                  Atenção: este valor é maior que o saldo atual da conta (
+                  Atenção: este valor é maior que o saldo disponível da conta (
                   <span className="font-semibold tabular-nums">
-                    {formatBRL(origemConta.saldo_atual)}
+                    {formatBRL(effectiveSaldoOrigem)}
                   </span>
-                  ). O sistema bloqueará o lançamento.
+                  ){editing && editing.contaOrigemId === origemConta.conta_id ? (
+                    <span className="text-xs">
+                      {' '}
+                      — já desconsiderando o lançamento sendo editado
+                    </span>
+                  ) : null}
+                  . O sistema bloqueará o lançamento.
                 </AlertDescription>
               </Alert>
             ) : null}

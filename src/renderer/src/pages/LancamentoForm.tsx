@@ -177,6 +177,14 @@ export function LancamentoFormPage(): React.ReactElement {
                 fornecedores={fornecedoresQ.data ?? []}
                 onCreateFornecedor={() => setFornecedorDialogOpen(true)}
                 disabled={lockedReadOnly}
+                editing={
+                  isEditing && lancamento
+                    ? {
+                        valor: Number(lancamento.valor),
+                        contaOrigemId: lancamento.conta_origem_id,
+                      }
+                    : null
+                }
               />
 
               <div className="sticky bottom-0 -mx-6 mt-8 flex flex-col-reverse gap-2 border-t bg-background/95 px-6 py-4 backdrop-blur sm:flex-row sm:items-center sm:justify-end md:-mx-8 md:px-8">

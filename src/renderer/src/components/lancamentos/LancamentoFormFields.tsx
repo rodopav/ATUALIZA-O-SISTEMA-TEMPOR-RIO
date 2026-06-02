@@ -30,6 +30,12 @@ interface LancamentoFormFieldsProps {
   fornecedores: FornecedorCliente[]
   onCreateFornecedor: () => void
   disabled?: boolean
+  /**
+   * Quando estamos editando um lançamento existente, passa o valor e a
+   * conta de origem originais pra UI ajustar a checagem de saldo
+   * insuficiente — sem isso o aviso aparece errado em toda edição.
+   */
+  editing?: { valor: number; contaOrigemId: string | null } | null
 }
 
 export function LancamentoFormFields({
@@ -40,6 +46,7 @@ export function LancamentoFormFields({
   fornecedores,
   onCreateFornecedor,
   disabled,
+  editing,
 }: LancamentoFormFieldsProps): React.ReactElement {
   const {
     register,
@@ -89,6 +96,7 @@ export function LancamentoFormFields({
           origemSelected={values.conta_origem_id}
           destinoSelected={values.conta_destino_id}
           disabled={disabled}
+          editing={editing}
         />
       </FormSection>
 
