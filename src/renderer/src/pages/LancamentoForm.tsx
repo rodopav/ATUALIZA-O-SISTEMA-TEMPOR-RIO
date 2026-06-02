@@ -28,6 +28,7 @@ import {
   centrosCustoQuery,
   tiposOperacaoQuery,
 } from '../lib/queries'
+import { contasSaldoQuery } from '../lib/contas-saldo-queries'
 import {
   fornecedoresQuery,
   lancamentoByIdQuery,
@@ -46,6 +47,10 @@ export function LancamentoFormPage(): React.ReactElement {
 
   const tiposQ = useQuery(tiposOperacaoQuery)
   const contasQ = useQuery(contasQuery)
+  // ContaSelectors usa contasSaldoQuery internamente (v_contas_saldo). Sem
+  // gatear isso, o form rendereriza com lista vazia e o Select da Conta de
+  // origem não acha o item pra mostrar — abria edição com campo em branco.
+  const contasSaldoQ = useQuery(contasSaldoQuery)
   const centrosQ = useQuery(centrosCustoQuery)
   const fornecedoresQ = useQuery(fornecedoresQuery)
   const lancamentoQ = useQuery(lancamentoByIdQuery(params.id))
@@ -54,18 +59,25 @@ export function LancamentoFormPage(): React.ReactElement {
   const [submitError, setSubmitError] = React.useState<string | null>(null)
   const [fornecedorDialogOpen, setFornecedorDialogOpen] = React.useState(false)
 
+  const lancamento = lancamentoQ.data
+
+  // Usamos `values` (RHF v7.36+) em vez de `defaultValues + useEffect(reset)`:
+  // o reset assíncrono dependia de re-render do <Controller> com timing
+  // delicado pro Radix Select pegar o value depois das options carregadas.
+  // Com `values`, RHF mantém o form em sync com o lancamento carregado.
+  // `keepDirtyValues` preserva edições do usuário caso a query refetch.
+  const editingValues = React.useMemo<LancamentoFormValues | undefined>(
+    () => (isEditing && lancamento ? rowToFormValues(lancamento) : undefined),
+    [isEditing, lancamento],
+  )
+
   const form = useForm<LancamentoFormValues>({
     resolver: zodResolver(lancamentoBaseSchema),
     defaultValues: defaultFormValues(),
+    values: editingValues,
+    resetOptions: { keepDirtyValues: true },
     mode: 'onBlur',
   })
-
-  const lancamento = lancamentoQ.data
-  React.useEffect(() => {
-    if (isEditing && lancamento) {
-      form.reset(rowToFormValues(lancamento))
-    }
-  }, [isEditing, lancamento, form])
 
   const dataValue = form.watch('data')
   React.useEffect(() => {
@@ -114,6 +126,7 @@ export function LancamentoFormPage(): React.ReactElement {
   const isLoadingCatalogs =
     tiposQ.isLoading ||
     contasQ.isLoading ||
+    contasSaldoQ.isLoading ||
     centrosQ.isLoading ||
     fornecedoresQ.isLoading
   const isLoadingDetail = isEditing && lancamentoQ.isLoading
