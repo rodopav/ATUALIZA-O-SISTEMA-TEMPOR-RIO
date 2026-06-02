@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery } from '@tanstack/react-query'
+import type { Session } from '@supabase/supabase-js'
 import { ArrowLeft, Lock, Save, AlertTriangle } from 'lucide-react'
 import { PageHeader } from '../components/PageHeader'
 import { Card, CardContent } from '../components/ui/card'
@@ -27,6 +28,9 @@ import {
   contasQuery,
   centrosCustoQuery,
   tiposOperacaoQuery,
+  type CentroCusto,
+  type ContaBancaria,
+  type TipoOperacao,
 } from '../lib/queries'
 import { contasSaldoQuery } from '../lib/contas-saldo-queries'
 import {
@@ -34,48 +38,111 @@ import {
   lancamentoByIdQuery,
   checkPeriodoFechado,
   type FornecedorCliente,
+  type LancamentoRow,
 } from '../lib/lancamentos-queries'
 import { useAuthStore } from '../lib/auth-store'
 import { mapError } from '../lib/error-mapper'
 
+/**
+ * Wrapper que carrega TODAS as queries (catalogs + detalhe quando editando)
+ * antes de renderizar o form. Assim que tudo está pronto, monta o
+ * `LancamentoFormBody` passando os dados já resolvidos. Isso elimina a race
+ * condition em que o form mountava com defaultValues vazios e o reset
+ * assíncrono podia perder os <Controller> dos Radix Selects.
+ *
+ * O `key` no body força um remount limpo quando o id do lançamento muda
+ * (ex.- usuário clica em outro "Editar" sem voltar pra lista) — caso contrário
+ * o RHF reutilizaria o form state do anterior.
+ */
 export function LancamentoFormPage(): React.ReactElement {
   const params = useParams<{ id?: string }>()
-  const navigate = useNavigate()
   const isEditing = Boolean(params.id)
-  const session = useAuthStore((s) => s.session)
-  const isAdmin = useAuthStore((s) => s.isAdmin)
 
   const tiposQ = useQuery(tiposOperacaoQuery)
   const contasQ = useQuery(contasQuery)
-  // ContaSelectors usa contasSaldoQuery internamente (v_contas_saldo). Sem
-  // gatear isso, o form rendereriza com lista vazia e o Select da Conta de
-  // origem não acha o item pra mostrar — abria edição com campo em branco.
+  // ContaSelectors usa contasSaldoQuery (v_contas_saldo) internamente.
+  // Sem este wait, a lista de contas chegava vazia no primeiro render
+  // e o Select de origem ficava em "Selecionar conta…" mesmo em edição.
   const contasSaldoQ = useQuery(contasSaldoQuery)
   const centrosQ = useQuery(centrosCustoQuery)
   const fornecedoresQ = useQuery(fornecedoresQuery)
   const lancamentoQ = useQuery(lancamentoByIdQuery(params.id))
 
+  const isLoadingCatalogs =
+    tiposQ.isLoading ||
+    contasQ.isLoading ||
+    contasSaldoQ.isLoading ||
+    centrosQ.isLoading ||
+    fornecedoresQ.isLoading
+  const isLoadingDetail = isEditing && lancamentoQ.isLoading
+
+  if (isLoadingCatalogs || isLoadingDetail) {
+    return <FormSkeleton />
+  }
+
+  // Edição sem dado é estado inválido (id na URL, mas /lancamentos/:id não
+  // achou nada). Mostra skeleton e o usuário pode voltar via header.
+  if (isEditing && !lancamentoQ.data) {
+    return <FormSkeleton />
+  }
+
+  return (
+    <LancamentoFormBody
+      // key força remount quando navegamos entre editar X → editar Y →
+      // novo. Sem isso, RHF mantém o form state anterior e ficamos com
+      // valores do lançamento errado misturados.
+      key={params.id ?? 'new'}
+      isEditing={isEditing}
+      lancamento={lancamentoQ.data ?? null}
+      tiposOperacao={tiposQ.data ?? []}
+      contas={contasQ.data ?? []}
+      centrosCusto={centrosQ.data ?? []}
+      fornecedores={fornecedoresQ.data ?? []}
+    />
+  )
+}
+
+interface LancamentoFormBodyProps {
+  isEditing: boolean
+  lancamento: LancamentoRow | null
+  tiposOperacao: TipoOperacao[]
+  contas: ContaBancaria[]
+  centrosCusto: CentroCusto[]
+  fornecedores: FornecedorCliente[]
+}
+
+function LancamentoFormBody({
+  isEditing,
+  lancamento,
+  tiposOperacao,
+  contas,
+  centrosCusto,
+  fornecedores,
+}: LancamentoFormBodyProps): React.ReactElement {
+  const params = useParams<{ id?: string }>()
+  const navigate = useNavigate()
+  const session = useAuthStore((s) => s.session)
+  const isAdmin = useAuthStore((s) => s.isAdmin)
+
   const [periodoFechado, setPeriodoFechado] = React.useState(false)
   const [submitError, setSubmitError] = React.useState<string | null>(null)
   const [fornecedorDialogOpen, setFornecedorDialogOpen] = React.useState(false)
 
-  const lancamento = lancamentoQ.data
-
-  // Usamos `values` (RHF v7.36+) em vez de `defaultValues + useEffect(reset)`:
-  // o reset assíncrono dependia de re-render do <Controller> com timing
-  // delicado pro Radix Select pegar o value depois das options carregadas.
-  // Com `values`, RHF mantém o form em sync com o lancamento carregado.
-  // `keepDirtyValues` preserva edições do usuário caso a query refetch.
-  const editingValues = React.useMemo<LancamentoFormValues | undefined>(
-    () => (isEditing && lancamento ? rowToFormValues(lancamento) : undefined),
+  // Esta linha é a fix definitivo do bug "form abre vazio em edição":
+  // defaultValues recebe os valores reais do lançamento, e como o
+  // componente só monta DEPOIS de todos catalogs + detalhe carregarem
+  // (gate na page acima), o RHF não passa por nenhum estado intermediário
+  // com IDs vazios. Os Radix Selects veem o value já alinhado com as
+  // SelectItems desde o primeiro render.
+  const initialValues = React.useMemo<LancamentoFormValues>(
+    () =>
+      isEditing && lancamento ? rowToFormValues(lancamento) : defaultFormValues(),
     [isEditing, lancamento],
   )
 
   const form = useForm<LancamentoFormValues>({
     resolver: zodResolver(lancamentoBaseSchema),
-    defaultValues: defaultFormValues(),
-    values: editingValues,
-    resetOptions: { keepDirtyValues: true },
+    defaultValues: initialValues,
     mode: 'onBlur',
   })
 
@@ -121,18 +188,6 @@ export function LancamentoFormPage(): React.ReactElement {
 
   const handleCreatedFornecedor = (forn: FornecedorCliente): void => {
     form.setValue('fornecedor_cliente_id', forn.id, { shouldDirty: true })
-  }
-
-  const isLoadingCatalogs =
-    tiposQ.isLoading ||
-    contasQ.isLoading ||
-    contasSaldoQ.isLoading ||
-    centrosQ.isLoading ||
-    fornecedoresQ.isLoading
-  const isLoadingDetail = isEditing && lancamentoQ.isLoading
-
-  if (isLoadingCatalogs || isLoadingDetail) {
-    return <FormSkeleton />
   }
 
   const liveValues = form.watch()
@@ -184,10 +239,10 @@ export function LancamentoFormPage(): React.ReactElement {
             <CardContent className="p-6 md:p-8">
               <LancamentoFormFields
                 form={form}
-                tiposOperacao={tiposQ.data ?? []}
-                contas={contasQ.data ?? []}
-                centrosCusto={centrosQ.data ?? []}
-                fornecedores={fornecedoresQ.data ?? []}
+                tiposOperacao={tiposOperacao}
+                contas={contas}
+                centrosCusto={centrosCusto}
+                fornecedores={fornecedores}
                 onCreateFornecedor={() => setFornecedorDialogOpen(true)}
                 disabled={lockedReadOnly}
                 editing={
@@ -232,8 +287,8 @@ export function LancamentoFormPage(): React.ReactElement {
           <div>
             <LivePreview
               values={liveValues}
-              contas={contasQ.data ?? []}
-              tiposOperacao={tiposQ.data ?? []}
+              contas={contas}
+              tiposOperacao={tiposOperacao}
             />
           </div>
         </div>
@@ -247,3 +302,6 @@ export function LancamentoFormPage(): React.ReactElement {
     </div>
   )
 }
+
+// Mantém o default-export pra não quebrar imports.
+export default LancamentoFormPage
