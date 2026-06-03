@@ -19,6 +19,7 @@ export type PageKey =
   | 'saldo_geral'
   | 'conferencia'
   | 'centros_custo'
+  | 'dashboard'
 
 interface FiltersState {
   byPage: Record<string, unknown>

@@ -68,15 +68,62 @@ export interface SaldoGeralFilters {
   onlyDivergentes?: boolean
 }
 
+/**
+ * Calcula o intervalo [start, endInclusive] do mês a partir do primeiro
+ * dia (formato YYYY-MM-DD). Pra alimentar a RPC `dashboard_saldo_geral_intervalo`.
+ */
+function monthBounds(
+  periodoIso: string,
+): { dataInicio: string; dataFim: string } | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(periodoIso)) return null
+  const [y, m] = periodoIso.split('-').map((s) => Number.parseInt(s, 10))
+  if (!Number.isFinite(y) || !Number.isFinite(m)) return null
+  const start = `${periodoIso.slice(0, 7)}-01`
+  // Último dia do mês: dia 0 do mês seguinte
+  const lastDay = new Date(y!, m!, 0)
+  const fim = `${y}-${String(m).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`
+  return { dataInicio: start, dataFim: fim }
+}
+
 export const saldoGeralQuery = (filters: SaldoGeralFilters = {}) =>
   queryOptions({
     queryKey: queryKeys.saldoGeral(filters),
     queryFn: async (): Promise<SaldoGeralRow[]> => {
+      // A view `v_saldo_geral` tem um bug estrutural: o JOIN com movs_periodo
+      // usa `si.periodo` (do saldo_inicial cadastrado) em vez do período
+      // filtrado. Resultado: filtrar por outro mês retorna zero pra
+      // contas cujo saldo_inicial foi cadastrado num mês diferente.
+      // Solução: rotear pra mesma RPC do modo "intervalo", passando os
+      // bounds do mês — assim Dashboard e Saldo Geral (mês) ficam corretos.
+      if (filters.periodo) {
+        const bounds = monthBounds(filters.periodo)
+        if (bounds) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const client = supabase as any
+          const { data, error } = await client.rpc(
+            'dashboard_saldo_geral_intervalo',
+            {
+              p_data_inicio: bounds.dataInicio,
+              p_data_fim: bounds.dataFim,
+              p_conta_ids: null,
+              p_empresa_ids:
+                filters.empresaIds && filters.empresaIds.length > 0
+                  ? filters.empresaIds
+                  : null,
+            },
+          )
+          if (error) throw error as Error
+          let rows = (data ?? []) as SaldoGeralRow[]
+          if (filters.onlyDivergentes) {
+            rows = rows.filter((r) => r.status === 'DIVERGENTE')
+          }
+          return rows
+        }
+      }
+
+      // Fallback (sem período): usa a view direto, sem filtro temporal.
       let query = supabase.from('v_saldo_geral').select('*')
 
-      if (filters.periodo) {
-        query = query.eq('periodo', filters.periodo)
-      }
       if (filters.empresaIds && filters.empresaIds.length > 0) {
         query = query.in('empresa_id', filters.empresaIds)
       }
