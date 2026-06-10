@@ -6,6 +6,7 @@ import {
   Eye,
   CheckCircle2,
   Undo2,
+  Trash2,
 } from 'lucide-react'
 import { Button } from '../ui/button'
 import {
@@ -21,6 +22,7 @@ import { hasEstorno, type LancamentoRow } from '../../lib/lancamentos-queries'
 export interface LancamentoActionHandlers {
   onEdit: (row: LancamentoRow) => void
   onEstornar: (row: LancamentoRow) => void
+  onExcluir: (row: LancamentoRow) => void
   onView: (row: LancamentoRow) => void
   onConciliar?: (row: LancamentoRow) => void
   onDesfazerConciliacao?: (row: LancamentoRow) => void
@@ -104,6 +106,14 @@ export function LancamentoRowActions({
           >
             <RotateCcw />
             Estornar
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() => handlers.onExcluir(row)}
+            disabled={isEstornado}
+            destructive
+          >
+            <Trash2 />
+            Excluir
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

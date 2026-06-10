@@ -14,6 +14,7 @@ import {
 } from '../components/lancamentos/FiltersBar'
 import { buildLancamentoColumns } from '../components/lancamentos/columns'
 import { EstornoModal } from '../components/lancamentos/EstornoModal'
+import { ExcluirModal } from '../components/lancamentos/ExcluirModal'
 import { ConciliarModal } from '../components/lancamentos/ConciliarModal'
 import {
   lancamentosListQuery,
@@ -70,6 +71,9 @@ export function LancamentosPage(): React.ReactElement {
     null,
   )
   const [estornoOpen, setEstornoOpen] = React.useState(false)
+  const [excluirTarget, setExcluirTarget] =
+    React.useState<LancamentoRow | null>(null)
+  const [excluirOpen, setExcluirOpen] = React.useState(false)
   const [conciliarTarget, setConciliarTarget] =
     React.useState<LancamentoRow | null>(null)
   const [conciliarOpen, setConciliarOpen] = React.useState(false)
@@ -183,6 +187,11 @@ export function LancamentosPage(): React.ReactElement {
     setEstornoOpen(true)
   }
 
+  const handleExcluir = (row: LancamentoRow): void => {
+    setExcluirTarget(row)
+    setExcluirOpen(true)
+  }
+
   const handleView = (row: LancamentoRow): void => {
     navigate(`/lancamentos/${row.id}`)
   }
@@ -208,6 +217,7 @@ export function LancamentosPage(): React.ReactElement {
         {
           onEdit: handleEdit,
           onEstornar: handleEstornar,
+          onExcluir: handleExcluir,
           onView: handleView,
           onConciliar: handleConciliar,
           onDesfazerConciliacao: handleDesfazer,
@@ -362,6 +372,12 @@ export function LancamentosPage(): React.ReactElement {
         open={estornoOpen}
         onOpenChange={setEstornoOpen}
         original={estornoTarget}
+      />
+
+      <ExcluirModal
+        open={excluirOpen}
+        onOpenChange={setExcluirOpen}
+        target={excluirTarget}
       />
 
       <ConciliarModal

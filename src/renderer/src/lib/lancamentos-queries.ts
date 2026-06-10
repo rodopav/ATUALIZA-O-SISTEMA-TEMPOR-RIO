@@ -237,6 +237,27 @@ export const fornecedoresQuery = queryOptions({
 })
 
 /**
+ * Exclui DEFINITIVAMENTE um lançamento via RPC `excluir_lancamento`.
+ * A justificativa é obrigatória (mín. 10 chars) e vai pro audit_log.motivo;
+ * o trigger de auditoria grava o JSON completo da linha excluída.
+ * Regras (validadas no banco): não pode ter estorno vinculado, não pode
+ * estar conciliado, não pode ter vindo de solicitação aprovada, e o mês
+ * não pode estar fechado.
+ */
+export async function excluirLancamento(
+  id: string,
+  motivo: string,
+): Promise<void> {
+  // RPC criada depois do database.types.ts gerado — cast até regenerar.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase.rpc as any)('excluir_lancamento', {
+    p_lancamento_id: id,
+    p_motivo: motivo,
+  })
+  if (error) throw error
+}
+
+/**
  * Calls the `periodo_esta_fechado` RPC to know whether the date is locked.
  */
 export async function checkPeriodoFechado(data: string): Promise<boolean> {
