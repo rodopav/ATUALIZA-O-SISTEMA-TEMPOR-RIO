@@ -40,6 +40,10 @@ export interface CrudPageProps<TRow extends { id: string }, S extends ZodTypeAny
   onDelete?: (row: TRow) => Promise<void>
   deleteTitle?: string
   deleteDescription?: (row: TRow) => React.ReactNode
+  /** Texto do botão de confirmação (default "Desativar"). */
+  deleteConfirmLabel?: string
+  /** Título do toast de sucesso da exclusão (default "Registro desativado"). */
+  deleteSuccessTitle?: string
   createLabel?: string
   hideCreate?: boolean
   banner?: React.ReactNode
@@ -66,6 +70,8 @@ export function CrudPage<TRow extends { id: string }, S extends ZodTypeAny>(
     onDelete,
     deleteTitle = 'Confirmar desativação',
     deleteDescription,
+    deleteConfirmLabel = 'Desativar',
+    deleteSuccessTitle = 'Registro desativado',
     createLabel,
     hideCreate,
     banner,
@@ -147,7 +153,7 @@ export function CrudPage<TRow extends { id: string }, S extends ZodTypeAny>(
       await onDelete(deleting)
       void qc.invalidateQueries({ queryKey })
       toast({
-        title: 'Registro desativado',
+        title: deleteSuccessTitle,
         description: 'Operação concluída com sucesso.',
         variant: 'success',
       })
@@ -216,7 +222,7 @@ export function CrudPage<TRow extends { id: string }, S extends ZodTypeAny>(
                 'Esta ação desativará o registro selecionado.'
               : null
           }
-          confirmLabel="Desativar"
+          confirmLabel={deleteConfirmLabel}
           destructive
           onConfirm={handleDelete}
           isPending={isDeleting}

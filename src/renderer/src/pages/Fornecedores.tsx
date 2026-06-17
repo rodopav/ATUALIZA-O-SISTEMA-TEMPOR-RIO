@@ -6,7 +6,6 @@ import { Badge } from '../components/ui/badge'
 import { CrudPage, type CrudHandlers } from '../components/admin/CrudPage'
 import { RowActionsMenu } from '../components/admin/RowActionsMenu'
 import { FornecedorFormFields } from '../components/admin/fornecedores/FornecedorFormFields'
-import { useAuthStore } from '../lib/auth-store'
 import { supabase } from '../lib/supabase'
 import {
   adminKeys,
@@ -71,7 +70,6 @@ function rowToForm(row: FornecedorCliente): FornecedorForm {
 }
 
 function buildColumns(
-  isAdmin: boolean,
   h: CrudHandlers<FornecedorCliente>,
 ): ColumnDef<FornecedorCliente, unknown>[] {
   return [
@@ -105,19 +103,13 @@ function buildColumns(
     {
       id: 'acoes',
       header: () => <span className="sr-only">Ações</span>,
-      cell: (ctx) =>
-        isAdmin ? (
-          <RowActionsMenu
-            onEdit={() => h.openEdit(ctx.row.original)}
-            onDelete={
-              ctx.row.original.ativo ? () => h.openDelete(ctx.row.original) : undefined
-            }
-          />
-        ) : (
-          <div className="flex justify-end">
-            <span className="text-xs text-muted-foreground">—</span>
-          </div>
-        ),
+      // Editar e excluir disponíveis pra TODOS os usuários.
+      cell: (ctx) => (
+        <RowActionsMenu
+          onEdit={() => h.openEdit(ctx.row.original)}
+          onDelete={() => h.openDelete(ctx.row.original)}
+        />
+      ),
       size: 60,
     },
   ]
@@ -145,43 +137,52 @@ async function saveFornecedor(
   if (error) throw error
 }
 
-async function deactivateFornecedor(row: FornecedorCliente): Promise<void> {
+async function deleteFornecedor(row: FornecedorCliente): Promise<void> {
   const { error } = await supabase
     .from('fornecedores_clientes')
-    .update({ ativo: false })
+    .delete()
     .eq('id', row.id)
-  if (error) throw error
+  if (error) {
+    // FK violation: há lançamentos apontando pra este fornecedor. Não deixa
+    // virar órfão — orienta a desativar (editar e marcar como inativo).
+    if ((error as { code?: string }).code === '23503') {
+      throw new Error(
+        `Não é possível excluir "${row.nome}": há lançamentos vinculados a este cadastro. ` +
+          'Para tirá-lo da lista, edite o cadastro e marque como inativo.',
+      )
+    }
+    throw error
+  }
 }
 
 export function FornecedoresPage(): React.ReactElement {
-  const isAdmin = useAuthStore((s) => s.isAdmin)
-
   const buildCols = React.useCallback(
-    (h: CrudHandlers<FornecedorCliente>) => buildColumns(isAdmin, h),
-    [isAdmin],
+    (h: CrudHandlers<FornecedorCliente>) => buildColumns(h),
+    [],
   )
 
   return (
     <CrudPage<FornecedorCliente, typeof fornecedorSchema>
       title="Fornecedores e Clientes"
-      description={
-        isAdmin
-          ? 'Catálogo completo (admin pode editar e desativar).'
-          : 'Catálogo. Você pode cadastrar novos registros.'
-      }
+      description="Catálogo de fornecedores e clientes. Todos os usuários podem cadastrar, editar e excluir."
       buildColumns={buildCols}
       queryKey={adminKeys.fornecedores}
       queryFn={fetchFornecedores}
       formSchema={fornecedorSchema}
       defaultValues={defaultValues}
-      formFields={(form) => <FornecedorFormFields form={form} isAdmin={isAdmin} />}
+      formFields={(form) => <FornecedorFormFields form={form} />}
       rowToForm={rowToForm}
       onSave={saveFornecedor}
-      onDelete={isAdmin ? deactivateFornecedor : undefined}
-      deleteTitle="Desativar fornecedor / cliente"
+      onDelete={deleteFornecedor}
+      deleteTitle="Excluir fornecedor / cliente"
+      deleteConfirmLabel="Excluir"
+      deleteSuccessTitle="Fornecedor excluído"
       deleteDescription={(row) => (
         <span>
-          O cadastro <strong>{row.nome}</strong> será marcado como inativo.
+          O cadastro <strong>{row.nome}</strong> será{' '}
+          <strong>excluído definitivamente</strong>. Se houver lançamentos
+          vinculados a ele, a exclusão é bloqueada — nesse caso, edite o
+          cadastro e marque como inativo.
         </span>
       )}
       formTitle={{ create: 'Novo fornecedor / cliente', edit: 'Editar fornecedor / cliente' }}

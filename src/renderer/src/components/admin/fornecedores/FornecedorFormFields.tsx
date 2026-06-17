@@ -22,12 +22,10 @@ export interface FornecedorFormValues {
 
 interface FornecedorFormFieldsProps {
   form: UseFormReturn<FornecedorFormValues>
-  isAdmin: boolean
 }
 
 export function FornecedorFormFields({
   form,
-  isAdmin,
 }: FornecedorFormFieldsProps): React.ReactElement {
   const { register, control, formState, watch } = form
   const tipo = watch('tipo')
@@ -101,16 +99,14 @@ export function FornecedorFormFields({
             <div>
               <Label htmlFor="ativo-switch">Ativo</Label>
               <p className="text-xs text-muted-foreground">
-                {isAdmin
-                  ? 'Apenas administradores podem desativar fornecedores existentes.'
-                  : 'Novos fornecedores são cadastrados como ativos.'}
+                Desmarque para deixar o cadastro inativo (some das listas de
+                seleção, mas o histórico é preservado).
               </p>
             </div>
             <Switch
               id="ativo-switch"
               checked={field.value}
               onCheckedChange={field.onChange}
-              disabled={!isAdmin}
             />
           </div>
         )}
