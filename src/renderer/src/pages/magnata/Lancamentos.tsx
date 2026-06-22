@@ -99,13 +99,18 @@ interface FilterState {
   natureza: 'all' | 'ENTRADA' | 'SAIDA' | 'TRANSFERENCIA'
 }
 
+const DRILL_LIMIT = 1000
+
+interface DrillResult {
+  rows: MagnataLancamento[]
+  /** true quando o banco devolveu o limite máximo — totais podem ser parciais. */
+  capped: boolean
+}
+
 function buildLancamentosQuery(filters: FilterState) {
   return queryOptions({
     queryKey: ['magnata', 'lancamentos_drill', filters] as const,
-    queryFn: async (): Promise<MagnataLancamento[]> => {
-      // SEMPRE busca sem filtro de natureza no backend — Transferência
-      // não é valor do enum natureza, é flag em tipos_operacao. Filtro
-      // aplicado client-side abaixo.
+    queryFn: async (): Promise<DrillResult> => {
       let q = supabase
         .from('lancamentos')
         .select(
@@ -120,7 +125,7 @@ function buildLancamentosQuery(filters: FilterState) {
         )
         .order('data', { ascending: false })
         .order('created_at', { ascending: false })
-        .limit(500)
+        .limit(DRILL_LIMIT)
 
       // Datas vazias NÃO podem ir pra `.gte/.lte` — Postgres rejeita
       // string '' com "invalid input syntax for type date". Aplicar
@@ -128,6 +133,26 @@ function buildLancamentosQuery(filters: FilterState) {
       if (filters.inicio) q = q.gte('data', filters.inicio)
       if (filters.fim) q = q.lte('data', filters.fim)
       if (filters.responsavelId) q = q.eq('responsavel_id', filters.responsavelId)
+
+      // CRÍTICO: empurrar natureza pro BANCO antes do .limit().
+      // `natureza` é coluna real (ENTRADA/SAIDA). Transferência interna é
+      // sempre natureza='SAIDA' (single-row), então o bucket ENTRADA já vem
+      // limpo. Antes o filtro de natureza era client-side: o .limit() cortava
+      // os 1000 lançamentos mais recentes (dominados por saídas/transfs do fim
+      // do mês) ANTES de filtrar, então "Entrada" perdia linhas e um filtro
+      // restrito (1 responsável) mostrava MAIS que "todos". Agora o limite
+      // vale por-natureza.
+      //   ENTRADA       → natureza=ENTRADA
+      //   SAIDA / TRANSF→ natureza=SAIDA (transferências são SAIDA; split fino
+      //                    por is_transferencia continua client-side abaixo)
+      if (filters.natureza === 'ENTRADA') {
+        q = q.eq('natureza', 'ENTRADA')
+      } else if (
+        filters.natureza === 'SAIDA' ||
+        filters.natureza === 'TRANSFERENCIA'
+      ) {
+        q = q.eq('natureza', 'SAIDA')
+      }
 
       const { data, error } = await q
       if (error) throw error
@@ -155,6 +180,7 @@ function buildLancamentosQuery(filters: FilterState) {
         centro: { codigo: string } | null
       }
       const raw = (data ?? []) as unknown as RawLanc[]
+      const capped = raw.length >= DRILL_LIMIT
 
       const rows = raw.map((r): MagnataLancamento => {
         const contaParaEmpresa = r.origem ?? r.destino
@@ -206,7 +232,7 @@ function buildLancamentosQuery(filters: FilterState) {
 
       if (filters.busca.trim()) {
         const needle = filters.busca.trim().toLowerCase()
-        return filtered.filter((row) =>
+        const buscados = filtered.filter((row) =>
           [
             row.descricao,
             row.responsavel_nome,
@@ -220,8 +246,9 @@ function buildLancamentosQuery(filters: FilterState) {
             .filter(Boolean)
             .some((s) => s!.toLowerCase().includes(needle)),
         )
+        return { rows: buscados, capped }
       }
-      return filtered
+      return { rows: filtered, capped }
     },
     staleTime: 30_000,
   })
@@ -242,8 +269,10 @@ export function MagnataLancamentosPage(): React.ReactElement {
     ? mapError(lancQ.error).description
     : null
 
+  const list = lancQ.data?.rows ?? []
+  const capped = lancQ.data?.capped ?? false
+
   const totals = React.useMemo(() => {
-    const list = lancQ.data ?? []
     let entradas = 0
     let saidas = 0
     let transferencias = 0
@@ -268,7 +297,7 @@ export function MagnataLancamentosPage(): React.ReactElement {
       else if (l.natureza === 'SAIDA') saidas += l.valor
     }
     return { entradas, saidas, transferencias, count }
-  }, [lancQ.data])
+  }, [list])
 
   const update = (patch: Partial<FilterState>): void =>
     setFilters((prev) => ({ ...prev, ...patch }))
@@ -294,8 +323,8 @@ export function MagnataLancamentosPage(): React.ReactElement {
           <div>
             <CardTitle>Filtros</CardTitle>
             <p className="mt-1 text-sm text-muted-foreground">
-              Combine intervalo, responsável e busca livre. Limite de 500 linhas
-              por consulta.
+              Combine intervalo, responsável e busca livre. Limite de 1.000
+              linhas por consulta.
             </p>
           </div>
           <div className="flex h-9 w-9 items-center justify-center rounded-md bg-amb-400/10 text-amb-500 dark:text-amb-300">
@@ -404,6 +433,18 @@ export function MagnataLancamentosPage(): React.ReactElement {
         />
       </div>
 
+      {capped ? (
+        <Alert variant="warning">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Resultado parcial</AlertTitle>
+          <AlertDescription>
+            A consulta atingiu o limite de {DRILL_LIMIT.toLocaleString('pt-BR')}{' '}
+            linhas — os totais acima podem estar incompletos. Reduza o intervalo
+            de datas ou refine os filtros para ver tudo.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
       <Card>
         <CardHeader>
           <CardTitle>Lançamentos</CardTitle>
@@ -418,7 +459,7 @@ export function MagnataLancamentosPage(): React.ReactElement {
                 <Skeleton key={i} className="h-12 w-full" />
               ))}
             </div>
-          ) : (lancQ.data ?? []).length === 0 ? (
+          ) : list.length === 0 ? (
             <div className="flex h-[200px] items-center justify-center px-4 py-8 text-center text-sm text-muted-foreground">
               <div>
                 <ListChecks className="mx-auto mb-2 h-6 w-6 opacity-60" />
@@ -440,7 +481,7 @@ export function MagnataLancamentosPage(): React.ReactElement {
                   </tr>
                 </thead>
                 <tbody>
-                  {(lancQ.data ?? []).map((row) => (
+                  {list.map((row) => (
                     <LancamentoRow key={row.id} row={row} />
                   ))}
                 </tbody>

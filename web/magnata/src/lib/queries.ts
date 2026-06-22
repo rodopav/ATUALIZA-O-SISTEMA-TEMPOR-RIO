@@ -333,9 +333,21 @@ export function lancamentosListQuery(filters: {
         )
         .order('data', { ascending: false })
         .order('created_at', { ascending: false })
-        .limit(300)
+        .limit(1000)
       if (filters.inicio) q = q.gte('data', filters.inicio)
       if (filters.fim) q = q.lte('data', filters.fim)
+      // CRÍTICO: natureza no BANCO antes do .limit() — senão o limite corta os
+      // lançamentos mais recentes ANTES do filtro client-side e os totais saem
+      // truncados (filtro restrito mostrava MAIS que "todas"). `natureza` é
+      // coluna real; transferência é sempre natureza='SAIDA'.
+      if (filters.natureza === 'ENTRADA') {
+        q = q.eq('natureza', 'ENTRADA')
+      } else if (
+        filters.natureza === 'SAIDA' ||
+        filters.natureza === 'TRANSFERENCIA'
+      ) {
+        q = q.eq('natureza', 'SAIDA')
+      }
       const { data, error } = await q
       if (error) throw error
       const rows = ((data ?? []) as any[]).map((r): MagnataLancamento => {
