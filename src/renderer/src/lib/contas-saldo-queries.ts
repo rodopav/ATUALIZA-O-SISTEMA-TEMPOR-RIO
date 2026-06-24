@@ -27,6 +27,10 @@ export interface ContaSaldo {
   ativo: boolean
   /** null quando o usuário não pode ver saldo (sugestão de origem). */
   saldo_atual: number | null
+  /** Conta de dinheiro em espécie (cofre/gaveta). */
+  is_caixa_fisico: boolean
+  /** Conta de aplicação financeira (renda fixa, fundos). */
+  is_investimento: boolean
 }
 
 /**
@@ -43,12 +47,13 @@ export const contasParaSugestaoQuery = queryOptions({
     const { data, error } = await supabase
       .from('v_contas_lookup')
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .select('id, apelido, is_caixa_fisico' as any)
+      .select('id, apelido, is_caixa_fisico, is_investimento' as any)
     if (error) throw error
     const rows = (data ?? []) as unknown as Array<{
       id: string
       apelido: string
       is_caixa_fisico: boolean | null
+      is_investimento: boolean | null
     }>
     return rows
       .filter((r) => r.id && r.apelido)
@@ -62,6 +67,8 @@ export const contasParaSugestaoQuery = queryOptions({
         empresa: null,
         ativo: true,
         saldo_atual: null,
+        is_caixa_fisico: Boolean(r.is_caixa_fisico),
+        is_investimento: Boolean(r.is_investimento),
       }))
   },
   staleTime: 1000 * 60 * 5,
@@ -70,6 +77,12 @@ export const contasParaSugestaoQuery = queryOptions({
 function normalize(row: ContaSaldoRow): ContaSaldo | null {
   // A view sempre traz valores; o tipo gerado é defensivo (`| null`).
   if (!row.conta_id || !row.apelido) return null
+  // is_caixa_fisico / is_investimento são colunas novas da view — ainda não
+  // estão no database.types gerado, então leio via cast.
+  const r = row as ContaSaldoRow & {
+    is_caixa_fisico?: boolean | null
+    is_investimento?: boolean | null
+  }
   return {
     conta_id: row.conta_id,
     apelido: row.apelido,
@@ -80,6 +93,8 @@ function normalize(row: ContaSaldoRow): ContaSaldo | null {
     empresa: row.empresa,
     ativo: row.ativo ?? true,
     saldo_atual: Number(row.saldo_atual ?? 0),
+    is_caixa_fisico: Boolean(r.is_caixa_fisico),
+    is_investimento: Boolean(r.is_investimento),
   }
 }
 

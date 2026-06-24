@@ -26,6 +26,7 @@ import { SaldoEmpresaChart } from '../components/dashboards/SaldoEmpresaChart'
 import { RecentLancamentos } from '../components/dashboards/RecentLancamentos'
 import { SaldosConsolidadosCards } from '../components/dashboards/SaldosConsolidadosCards'
 import { LimitesPorContaSection } from '../components/dashboards/LimitesPorContaSection'
+import { ContasClassificadasSection } from '../components/dashboards/ContasClassificadasSection'
 import { EmpresaMultiSelect } from '../components/EmpresaMultiSelect'
 import {
   saldoGeralQuery,
@@ -204,6 +205,9 @@ export function DashboardPage(): React.ReactElement {
       ) : null}
 
       <SaldosConsolidadosCards />
+
+      <ContasClassificadasSection kind="caixa_fisico" />
+      <ContasClassificadasSection kind="investimento" />
 
       <LimitesPorContaSection />
 
