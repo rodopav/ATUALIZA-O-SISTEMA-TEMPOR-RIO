@@ -20,6 +20,7 @@ export interface KpisExecutivos {
   saldo_geral: number
   saldo_contas: number
   saldo_caixa_fisico: number
+  saldo_investimentos: number
   limite_total_configurado: number
   limite_total_disponivel: number
   limite_consumido: number
@@ -48,6 +49,7 @@ export const kpisExecutivosQuery = queryOptions({
       saldo_geral: pickNum(r.saldo_geral),
       saldo_contas: pickNum(r.saldo_contas),
       saldo_caixa_fisico: pickNum(r.saldo_caixa_fisico),
+      saldo_investimentos: pickNum(r.saldo_investimentos),
       limite_total_configurado: pickNum(r.limite_total_configurado),
       limite_total_disponivel: pickNum(r.limite_total_disponivel),
       limite_consumido: pickNum(r.limite_consumido),

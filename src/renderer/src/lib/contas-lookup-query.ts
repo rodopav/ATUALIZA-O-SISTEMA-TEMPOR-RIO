@@ -14,12 +14,14 @@ import { supabase } from './supabase'
 export interface ContaLookupInfo {
   apelido: string
   is_caixa_fisico: boolean
+  is_investimento: boolean
 }
 
 interface ContaLookupRow {
   id: string
   apelido: string
   is_caixa_fisico: boolean | null
+  is_investimento: boolean | null
 }
 
 export const contasLookupQuery = queryOptions({
@@ -28,7 +30,7 @@ export const contasLookupQuery = queryOptions({
     const { data, error } = await supabase
       .from('v_contas_lookup')
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .select('id, apelido, is_caixa_fisico' as any)
+      .select('id, apelido, is_caixa_fisico, is_investimento' as any)
     if (error) throw error
     const map = new Map<string, ContaLookupInfo>()
     for (const row of (data ?? []) as unknown as ContaLookupRow[]) {
@@ -36,6 +38,7 @@ export const contasLookupQuery = queryOptions({
         map.set(row.id, {
           apelido: row.apelido,
           is_caixa_fisico: Boolean(row.is_caixa_fisico),
+          is_investimento: Boolean(row.is_investimento),
         })
       }
     }

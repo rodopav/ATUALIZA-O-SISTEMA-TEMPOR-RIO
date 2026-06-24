@@ -24,9 +24,16 @@ const contaSchema = z.object({
   agencia: z.string().nullable().optional(),
   numero: z.string().nullable().optional(),
   apelido: z.string().min(2, 'Apelido deve ter ao menos 2 caracteres.'),
-  tipo: z.enum(['CORRENTE', 'POUPANCA', 'CAIXA_FISICO', 'CARTAO_CREDITO_CONTA']),
+  tipo: z.enum([
+    'CORRENTE',
+    'POUPANCA',
+    'CAIXA_FISICO',
+    'INVESTIMENTO',
+    'CARTAO_CREDITO_CONTA',
+  ]),
   ativo: z.boolean(),
   is_caixa_fisico: z.boolean(),
+  is_investimento: z.boolean(),
   tem_limite: z.boolean(),
   valor_limite: z.string(),
 })
@@ -42,6 +49,7 @@ const defaultValues: ContaForm = {
   tipo: 'CORRENTE',
   ativo: true,
   is_caixa_fisico: false,
+  is_investimento: false,
   tem_limite: false,
   valor_limite: '',
 }
@@ -49,6 +57,7 @@ const defaultValues: ContaForm = {
 function rowToForm(row: ContaWithEmpresa): ContaForm {
   const extra = row as ContaWithEmpresa & {
     is_caixa_fisico?: boolean
+    is_investimento?: boolean
     tem_limite?: boolean
     limite?: { valor_limite: number; ativo: boolean } | null
   }
@@ -61,6 +70,7 @@ function rowToForm(row: ContaWithEmpresa): ContaForm {
     tipo: row.tipo,
     ativo: row.ativo,
     is_caixa_fisico: extra.is_caixa_fisico ?? row.tipo === 'CAIXA_FISICO',
+    is_investimento: extra.is_investimento ?? row.tipo === 'INVESTIMENTO',
     tem_limite: extra.tem_limite ?? false,
     valor_limite: extra.limite?.valor_limite
       ? String(extra.limite.valor_limite)
@@ -119,6 +129,8 @@ async function saveConta(
   editing: ContaWithEmpresa | null,
 ): Promise<void> {
   const isCaixa = values.is_caixa_fisico || values.tipo === 'CAIXA_FISICO'
+  const isInvestimento =
+    values.is_investimento || values.tipo === 'INVESTIMENTO'
   const temLimite = values.tem_limite
   const valorLimiteNum = Number.parseFloat(
     (values.valor_limite || '0').replace(',', '.'),
@@ -140,6 +152,7 @@ async function saveConta(
     tipo: values.tipo,
     ativo: values.ativo,
     is_caixa_fisico: isCaixa,
+    is_investimento: isInvestimento,
     tem_limite: temLimite,
   }
 

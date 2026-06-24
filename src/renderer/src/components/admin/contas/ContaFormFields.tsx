@@ -17,6 +17,7 @@ export const CONTA_TIPOS = [
   { value: 'CORRENTE', label: 'Conta Corrente' },
   { value: 'POUPANCA', label: 'Poupança' },
   { value: 'CAIXA_FISICO', label: 'Caixa Físico' },
+  { value: 'INVESTIMENTO', label: 'Investimento' },
   { value: 'CARTAO_CREDITO_CONTA', label: 'Cartão de Crédito (Conta)' },
 ] as const
 
@@ -34,6 +35,8 @@ export interface ContaFormValues {
   tipo: ContaTipo
   ativo: boolean
   is_caixa_fisico: boolean
+  /** Conta de investimento (renda fixa, fundos, CDB). Separada no dashboard. */
+  is_investimento: boolean
   /** Cheque especial: conta aceita lançamento mesmo com saldo<0 até este valor. */
   tem_limite: boolean
   /** Valor máximo do limite (R$). 0 se não tem. Aceitamos string vazia no form. */
@@ -140,6 +143,29 @@ export function ContaFormFields({ form }: ContaFormFieldsProps): React.ReactElem
             </div>
             <Switch
               id="caixa-fisico-switch"
+              checked={field.value}
+              onCheckedChange={field.onChange}
+            />
+          </div>
+        )}
+      />
+
+      <Controller
+        name="is_investimento"
+        control={control}
+        render={({ field }) => (
+          <div className="flex items-center justify-between rounded-md border border-blu-600/40 bg-blu-600/[0.04] p-3">
+            <div>
+              <Label htmlFor="investimento-switch">Investimento</Label>
+              <p className="text-xs text-muted-foreground">
+                Marque se essa conta é uma aplicação (renda fixa, CDB, fundos,
+                poupança remunerada). O saldo entra em "Saldo Investimentos" no
+                dashboard e fica fora do "Saldo das contas" e da liquidez
+                imediata.
+              </p>
+            </div>
+            <Switch
+              id="investimento-switch"
               checked={field.value}
               onCheckedChange={field.onChange}
             />

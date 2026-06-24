@@ -27,6 +27,8 @@ export type AcaoAudit = Enums<'acao_audit'>
 export interface SaldosConsolidados {
   saldo_contas: number
   saldo_caixa_fisico: number
+  /** Soma das contas marcadas como investimento. Fora do "saldo_contas". */
+  saldo_investimentos: number
   saldo_geral: number
   /** Soma dos limites disponíveis (cheque especial). NÃO somado em saldo_geral. */
   saldo_limite_total: number
@@ -89,6 +91,7 @@ export const saldosConsolidadosQuery = queryOptions({
     const rows = (data ?? []) as Array<{
       saldo_contas: string | number | null
       saldo_caixa_fisico: string | number | null
+      saldo_investimentos: string | number | null
       saldo_geral: string | number | null
       saldo_limite_total: string | number | null
     }>
@@ -96,6 +99,7 @@ export const saldosConsolidadosQuery = queryOptions({
     return {
       saldo_contas: Number(r?.saldo_contas ?? 0),
       saldo_caixa_fisico: Number(r?.saldo_caixa_fisico ?? 0),
+      saldo_investimentos: Number(r?.saldo_investimentos ?? 0),
       saldo_geral: Number(r?.saldo_geral ?? 0),
       saldo_limite_total: Number(r?.saldo_limite_total ?? 0),
     }

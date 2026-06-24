@@ -783,6 +783,7 @@ export type Database = {
         | "CORRENTE"
         | "POUPANCA"
         | "CAIXA_FISICO"
+        | "INVESTIMENTO"
         | "CARTAO_CREDITO_CONTA"
       modulo_app:
         | "dashboard"
