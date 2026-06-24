@@ -19,6 +19,7 @@ import { KpisExecutivosCards } from '../../components/magnata/KpisExecutivosCard
 import { EvolucaoSaldoChart } from '../../components/magnata/EvolucaoSaldoChart'
 import { TipoContaPieChart } from '../../components/magnata/TipoContaPieChart'
 import { SaldosConsolidadosCards } from '../../components/dashboards/SaldosConsolidadosCards'
+import { ContasClassificadasSection } from '../../components/dashboards/ContasClassificadasSection'
 import { LimitesPorContaSection } from '../../components/dashboards/LimitesPorContaSection'
 import {
   alertasQuery,
@@ -87,6 +88,8 @@ export function MagnataVisaoPage(): React.ReactElement {
           descricao="Onde o dinheiro está agora"
         />
         <SaldosConsolidadosCards />
+        <ContasClassificadasSection kind="caixa_fisico" />
+        <ContasClassificadasSection kind="investimento" />
       </section>
 
       {/* 4. PULSO DO MÊS — 6 KPIs humanos com tooltip */}

@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { HeroExecutivo } from '../components/HeroExecutivo'
 import { AlertasBanner } from '../components/AlertasBanner'
 import { SaldosCards } from '../components/SaldosCards'
+import { ContasClassificadasList } from '../components/ContasClassificadasList'
 import { KpisGrid } from '../components/KpisGrid'
 import { ContasNegativasList } from '../components/ContasNegativasList'
 import { LimitesPorContaList } from '../components/LimitesPorContaList'
@@ -25,6 +26,8 @@ export function VisaoGeral(): React.ReactElement {
 
       <Section label="Caixa do grupo">
         <SaldosCards />
+        <ContasClassificadasList kind="caixa_fisico" />
+        <ContasClassificadasList kind="investimento" />
       </Section>
 
       <Section label="Pulso do mês">

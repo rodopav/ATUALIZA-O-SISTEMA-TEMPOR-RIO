@@ -197,8 +197,10 @@ export interface ContaSaldo {
   conta_id: string
   apelido: string
   banco: string | null
+  empresa: string | null
   saldo_atual: number
   is_caixa_fisico: boolean
+  is_investimento: boolean
   tem_limite: boolean
 }
 
@@ -214,8 +216,10 @@ export const contasSaldoQuery = queryOptions({
       conta_id: r.conta_id ?? r.id,
       apelido: r.apelido,
       banco: r.banco ?? null,
+      empresa: r.empresa ?? null,
       saldo_atual: pickNum(r.saldo_atual),
       is_caixa_fisico: Boolean(r.is_caixa_fisico),
+      is_investimento: Boolean(r.is_investimento),
       tem_limite: Boolean(r.tem_limite),
     }))
   },
