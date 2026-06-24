@@ -26,6 +26,7 @@ export function SaldosCards(): React.ReactElement {
   const cardCount = 3 + (hasInvestimento ? 1 : 0) + (hasLimite ? 1 : 0)
 
   return (
+    <div className="space-y-3">
     <div className={GRID_BY_COUNT[cardCount] ?? GRID_BY_COUNT[3]}>
       <KpiCard
         label="Saldo das contas"
@@ -69,6 +70,23 @@ export function SaldosCards(): React.ReactElement {
           valor={formatBRL(k?.limite_total_disponivel ?? 0)}
           hint="Cheque especial — fora do Saldo Geral"
         />
+      ) : null}
+    </div>
+
+      {/* Cálculo do Saldo Geral explícito — composição verificável. */}
+      {!loading ? (
+        <p className="px-1 text-xs text-zinc-500">
+          <span className="font-semibold text-zinc-200">Saldo Geral</span> ={' '}
+          {formatBRL(k?.saldo_contas ?? 0)} (contas) +{' '}
+          {formatBRL(k?.saldo_caixa_fisico ?? 0)} (caixa físico)
+          {hasInvestimento ? (
+            <> + {formatBRL(k?.saldo_investimentos ?? 0)} (investimentos)</>
+          ) : null}{' '}
+          ={' '}
+          <span className="font-semibold text-zinc-200">
+            {formatBRL(k?.saldo_geral ?? 0)}
+          </span>
+        </p>
       ) : null}
     </div>
   )

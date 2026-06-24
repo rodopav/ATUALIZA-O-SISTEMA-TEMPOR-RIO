@@ -28,6 +28,7 @@ export function SaldosConsolidadosCards(): React.ReactElement {
   const cardCount = 3 + (hasInvestimento ? 1 : 0) + (hasLimite ? 1 : 0)
 
   return (
+    <div className="space-y-2">
     <div className={GRID_BY_COUNT[cardCount] ?? GRID_BY_COUNT[3]}>
       <StatCard
         icon={<Wallet className="h-4 w-4" />}
@@ -71,6 +72,23 @@ export function SaldosConsolidadosCards(): React.ReactElement {
           description="Cheque especial das contas — fora do Saldo Geral"
           accent="destructive"
         />
+      ) : null}
+    </div>
+
+      {/* Cálculo do Saldo Geral explícito — composição verificável. */}
+      {!loading ? (
+        <p className="px-1 text-xs text-muted-foreground">
+          <span className="font-semibold text-foreground">Saldo Geral</span> ={' '}
+          {formatBRL(data?.saldo_contas ?? 0)} (contas) +{' '}
+          {formatBRL(data?.saldo_caixa_fisico ?? 0)} (caixa físico)
+          {hasInvestimento ? (
+            <> + {formatBRL(data?.saldo_investimentos ?? 0)} (investimentos)</>
+          ) : null}{' '}
+          ={' '}
+          <span className="font-semibold text-foreground">
+            {formatBRL(data?.saldo_geral ?? 0)}
+          </span>
+        </p>
       ) : null}
     </div>
   )
