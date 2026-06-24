@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { Card, CardContent } from '../ui/card'
 import { Spinner } from '../ui/spinner'
+import { FitNumber } from './FitNumber'
 import { cn } from '../../lib/cn'
 
 interface StatCardProps {
@@ -72,9 +73,13 @@ export function StatCard({
           {loading ? (
             <Spinner size={20} />
           ) : (
-            <p className="font-mono text-[26px] font-extrabold leading-none tracking-tight text-foreground">
+            <FitNumber
+              maxFontPx={26}
+              minFontPx={13}
+              className="font-mono font-extrabold tracking-tight text-foreground"
+            >
               {value}
-            </p>
+            </FitNumber>
           )}
           {description ? (
             <p className="text-xs text-muted-foreground">{description}</p>
